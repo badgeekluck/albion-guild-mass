@@ -30,7 +30,7 @@ class DashboardController extends Controller
 
         $templateSnapshot = null;
         if ($request->template_id) {
-            $template = \App\Models\PartyTemplate::find($request->template_id);
+            $template = PartyTemplate::find($request->template_id);
             $templateSnapshot = $template->structure;
         }
 
@@ -38,8 +38,9 @@ class DashboardController extends Controller
             'creator_id' => auth()->id(),
             'slug' => Str::random(6),
             'destination_url' => 'https://discord.gg/albion', // destination place
-            'expires_at' => now()->addHours(3), // default 3h
+            'expires_at' => now()->addHours(8), // default 8h
             'template_snapshot' => $templateSnapshot,
+            'title' => $request->input('title') ? $request->input('title') : 'Untitled Party',
         ]);
 
         return back()->with('success', 'Yeni parti linki oluşturuldu!');
