@@ -63,6 +63,10 @@
             </div>
             <div style="margin-top: 10px;">
                 <a href="{{ route('templates.index') }}" class="btn-manage">⚙️ Manage Templates</a>
+                <a href="{{ route('logout') }}"
+                   style="background: #ef4444; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: bold;">
+                    🚪 Logout
+                </a>
             </div>
         </div>
     </header>
