@@ -192,15 +192,6 @@
             </div>
         </div>
     </div>
-    <div style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
-        <div style="background: #10b981; padding: 8px; border-radius: 6px;">👁️</div>
-        <div>
-            <div style="font-size: 11px; text-transform: uppercase; font-weight: bold;">Live Viewers</div>
-            <div style="font-size: 18px; font-weight: bold; color: white;">
-                {{ $viewerCount ?? 1 }}
-            </div>
-        </div>
-    </div>
 
     @auth
         <div style="margin-left: 20px; padding-left: 20px; border-left: 1px solid #444; display: flex; flex-direction: column; align-items: flex-end;">
