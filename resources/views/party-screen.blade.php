@@ -361,6 +361,22 @@
     <div class="modal-content">
         <span style="float:right; cursor:pointer; font-size:24px;" onclick="document.getElementById('joinModal').style.display='none'">&times;</span>
         <h2>Join Party</h2>
+        @if ($errors->any())
+            <div style="background-color: rgba(220, 38, 38, 0.2); border: 1px solid #dc2626; color: #fca5a5; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
+                <strong style="display:block; margin-bottom:5px;">⚠️ İşlem Başarısız:</strong>
+                <ul style="margin: 0; padding-left: 20px;">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    document.getElementById('joinModal').style.display = 'block';
+                });
+            </script>
+        @endif
         <form action="/go/{{ $link->slug }}/join" method="POST">
             @csrf
 
@@ -373,30 +389,22 @@
                    style="border-color: #fbbf24;">
 
             <datalist id="roleOptions">
-                <option value="Fill">Doldur (Herhangi)</option>
-
                 @foreach($availableRoles as $role)
                     <option value="{{ $role->name }}">{{ $role->category }}</option>
                 @endforeach
             </datalist>
 
             <label>Main Role</label>
-            <input list="roleOptions" name="main_role"
-                   placeholder="Select or type weapon..." required
-                   class="role-input"
-                   onchange="validateRoleInput(this)"> <label>Second Role</label>
-            <input list="roleOptions" name="second_role"
-                   placeholder="Select or type weapon..."
-                   class="role-input"
-                   onchange="validateRoleInput(this)"> <label>Third Role</label>
-            <input list="roleOptions" name="third_role"
-                   placeholder="Select or type weapon..."
-                   class="role-input"
-                   onchange="validateRoleInput(this)"> <label>Fourth Role</label>
-            <input list="roleOptions" name="fourth_role"
-                   placeholder="Select or type weapon..."
-                   class="role-input"
-                   onchange="validateRoleInput(this)"> ```
+            <input list="roleOptions" name="main_role" placeholder="Select or type weapon..." required class="role-input">
+
+            <label>Second Role</label>
+            <input list="roleOptions" name="second_role" placeholder="Select or type weapon..." class="role-input">
+
+            <label>Third Role</label>
+            <input list="roleOptions" name="third_role" placeholder="Select or type weapon..." class="role-input">
+
+            <label>Fourth Role</label>
+            <input list="roleOptions" name="fourth_role" placeholder="Select or type weapon..." class="role-input">
 
             <button type="submit" class="btn-join" style="margin-top: 15px;">Sign Up</button>
         </form>
@@ -433,27 +441,6 @@
                 if(data.success) location.reload();
                 else alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
             });
-    }
-
-    function validateRoleInput(input) {
-        var value = input.value;
-        var list = document.getElementById('roleOptions');
-        var options = list.options;
-        var match = false;
-
-        if(value === '') return;
-
-        for (var i = 0; i < options.length; i++) {
-            if (options[i].value === value) {
-                match = true;
-                break;
-            }
-        }
-
-        if (!match) {
-            alert("Lütfen sadece listede olan bir silahı seçin veya 'Fill' yazın!");
-            input.value = ''; // Hatalı girişi temizle
-        }
     }
 </script>
 
