@@ -15,20 +15,26 @@ class TemplateController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate(['name' => 'required|string|max:255']);
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'size' => 'required|integer|min:1|max:100',
+        ]);
+
+        $partySize = $request->size;
 
         $structure = [];
-        for ($i = 1; $i <= 20; $i++) {
+        for ($i = 1; $i <= $partySize; $i++) {
             $structure[$i] = ['role' => 'Any', 'icon' => 'default'];
         }
 
         PartyTemplate::create([
             'name' => $request->name,
-            'structure' => $structure, // Varsayılan boş yapı
+            'size' => $partySize,
+            'structure' => $structure,
             'created_by' => auth()->id()
         ]);
 
-        return back()->with('success', 'Template oluşturuldu! Şimdi düzenle.');
+        return back()->with('success', 'Template oluşturuldu! Düzenlemeye başla.');
     }
 
     public function edit($id)
