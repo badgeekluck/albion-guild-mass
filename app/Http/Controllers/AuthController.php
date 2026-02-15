@@ -13,8 +13,7 @@ class AuthController extends Controller
     public function redirect()
     {
         return Socialite::driver('discord')
-            ->scopes(['identify', 'email', 'guilds']) // Guilds izni önemli!
-            ->with(['prompt' => 'consent'])
+            ->scopes(['identify', 'email'])
             ->redirect();
     }
 
@@ -26,23 +25,25 @@ class AuthController extends Controller
             return redirect('/')->with('error', 'Giriş yapılamadı.');
         }
 
-        $myGuildId = env('DISCORD_GUILD_ID');
+        // .env dosyasındaki ayarları çekiyoruz
+        $guildId  = env('DISCORD_GUILD_ID');
+        $roleId   = env('DISCORD_ROLE_ID');
+        $botToken = env('DISCORD_BOT_TOKEN');
 
-        $response = Http::withToken($discordUser->token)
-            ->get('https://discord.com/api/users/@me/guilds');
+        $response = Http::withHeaders([
+            'Authorization' => 'Bot ' . $botToken,
+        ])->get("https://discord.com/api/guilds/{$guildId}/members/{$discordUser->id}");
 
-        $guilds = $response->json();
-        $isInGuild = false;
-
-        foreach ($guilds as $guild) {
-            if ($guild['id'] == $myGuildId) {
-                $isInGuild = true;
-                break;
-            }
+        if ($response->failed()) {
+            return abort(403, 'HATA: Bu sisteme girmek için Discord sunucumuza üye olmalısınız!');
         }
 
-        if (!$isInGuild) {
-            return abort(403, 'Bu sisteme girmek için Discord sunucumuzda olmalısınız!');
+        $memberData = $response->json();
+
+        $userRoles = $memberData['roles'] ?? [];
+
+        if (!in_array($roleId, $userRoles)) {
+            return abort(403, 'HATA: Giriş yetkiniz yok! Gerekli role sahip değilsiniz.');
         }
 
         $user = User::updateOrCreate(

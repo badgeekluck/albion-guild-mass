@@ -23,7 +23,6 @@ class DashboardController extends Controller
 
     public function createLink(Request $request)
     {
-        // Basit validasyon
         $request->validate([
             'title' => 'nullable|string|max:255',
             'template_id' => 'nullable|exists:party_templates,id'
@@ -35,7 +34,6 @@ class DashboardController extends Controller
             $templateSnapshot = $template->structure;
         }
 
-        // Link Oluştur
         SharedLink::create([
             'creator_id' => auth()->id(),
             'slug' => Str::random(6),

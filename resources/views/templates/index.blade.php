@@ -22,20 +22,28 @@
 
     <div class="card">
         <h3>Create New Template</h3>
-        <form action="{{ route('templates.store') }}" method="POST" style="display:flex; gap:10px;">
+        <form action="{{ route('templates.store') }}" method="POST" style="display:flex; gap:10px; align-items: center;">
             @csrf
-            <input type="text" name="name" placeholder="Template Name (e.g. ZvZ Main)" required style="flex:1;">
+
+            <input type="text" name="name" placeholder="Template Name (e.g. ZvZ 80)" required style="flex:2;">
+
+            <div style="display:flex; align-items:center; gap:5px;">
+                <label style="font-size:14px; color:#ccc;">Size:</label>
+                <input type="number" name="size" value="20" min="1" max="100" style="width: 60px; text-align: center;">
+            </div>
+
             <button type="submit" class="btn btn-green">Create</button>
         </form>
     </div>
 
     <div class="card">
         <table>
-            <thead><tr><th>Name</th><th>Created At</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Size</th><th>Created At</th><th>Actions</th></tr></thead>
             <tbody>
             @foreach($templates as $tmpl)
                 <tr>
                     <td>{{ $tmpl->name }}</td>
+                    <td>{{ $tmpl->size ?? 20 }} Slots</td>
                     <td>{{ $tmpl->created_at->format('d M Y') }}</td>
                     <td>
                         <a href="{{ route('templates.edit', $tmpl->id) }}" class="btn btn-blue">Edit Slots</a>
