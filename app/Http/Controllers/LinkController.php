@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\GameRole;
 use App\Models\SharedLink;
 use App\Models\LinkClick;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -90,18 +91,30 @@ class LinkController extends Controller
     {
         $link = SharedLink::where('slug', $slug)->firstOrFail();
 
-        $data = $request->validate([
-            'in_game_name' => 'required|string|max:32',
-            'main_role'    => 'required|string|max:50',
-            'second_role'  => 'nullable|string|max:50',
-            'third_role'   => 'nullable|string|max:50',
-            'fourth_role'  => 'nullable|string|max:50',
-        ]);
+        $validRoles = GameRole::pluck('name')->toArray();
+        $validRoles[] = 'Fill';
 
+        $validated = $request->validate([
+            'in_game_name' => 'required|string|max:20',
+
+            'main_role' => [
+                'required',
+                Rule::in($validRoles)
+            ],
+
+            'second_role' => ['nullable', Rule::in($validRoles)],
+            'third_role'  => ['nullable', Rule::in($validRoles)],
+            'fourth_role' => ['nullable', Rule::in($validRoles)],
+        ], [
+            'main_role.in' => 'Seçtiğiniz rol geçerli değil. Lütfen listeden seçin.',
+            'second_role.in' => 'İkinci rol geçerli değil.',
+            'third_role.in' => 'Üçüncü rol geçerli değil.',
+            'fourth_role.in' => 'Dördüncü rol geçerli değil.',
+        ]);
 
         $link->attendees()->updateOrCreate(
             ['user_id' => auth()->id()],
-            $data
+            $validated
         );
 
         return back()->with('success', 'Joined successfully!');

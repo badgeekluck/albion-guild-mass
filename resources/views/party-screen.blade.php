@@ -373,22 +373,30 @@
                    style="border-color: #fbbf24;">
 
             <datalist id="roleOptions">
+                <option value="Fill">Doldur (Herhangi)</option>
+
                 @foreach($availableRoles as $role)
                     <option value="{{ $role->name }}">{{ $role->category }}</option>
                 @endforeach
             </datalist>
 
             <label>Main Role</label>
-            <input list="roleOptions" name="main_role" placeholder="Select or type weapon..." required class="role-input">
-
-            <label>Second Role</label>
-            <input list="roleOptions" name="second_role" placeholder="Select or type weapon..." class="role-input">
-
-            <label>Third Role</label>
-            <input list="roleOptions" name="third_role" placeholder="Select or type weapon..." class="role-input">
-
-            <label>Fourth Role</label>
-            <input list="roleOptions" name="fourth_role" placeholder="Select or type weapon..." class="role-input">
+            <input list="roleOptions" name="main_role"
+                   placeholder="Select or type weapon..." required
+                   class="role-input"
+                   onchange="validateRoleInput(this)"> <label>Second Role</label>
+            <input list="roleOptions" name="second_role"
+                   placeholder="Select or type weapon..."
+                   class="role-input"
+                   onchange="validateRoleInput(this)"> <label>Third Role</label>
+            <input list="roleOptions" name="third_role"
+                   placeholder="Select or type weapon..."
+                   class="role-input"
+                   onchange="validateRoleInput(this)"> <label>Fourth Role</label>
+            <input list="roleOptions" name="fourth_role"
+                   placeholder="Select or type weapon..."
+                   class="role-input"
+                   onchange="validateRoleInput(this)"> ```
 
             <button type="submit" class="btn-join" style="margin-top: 15px;">Sign Up</button>
         </form>
@@ -425,6 +433,27 @@
                 if(data.success) location.reload();
                 else alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
             });
+    }
+
+    function validateRoleInput(input) {
+        var value = input.value;
+        var list = document.getElementById('roleOptions');
+        var options = list.options;
+        var match = false;
+
+        if(value === '') return;
+
+        for (var i = 0; i < options.length; i++) {
+            if (options[i].value === value) {
+                match = true;
+                break;
+            }
+        }
+
+        if (!match) {
+            alert("Lütfen sadece listede olan bir silahı seçin veya 'Fill' yazın!");
+            input.value = ''; // Hatalı girişi temizle
+        }
     }
 </script>
 
