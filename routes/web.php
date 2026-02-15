@@ -56,5 +56,5 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::get('/', function () {
-    return 'Ana Sayfa - Giriş yapıldıysa buradasın.';
-});
+    return view('welcome');
+})->name('home');
