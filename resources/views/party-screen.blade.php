@@ -52,6 +52,25 @@
             outline: none;
         }
 
+        .my-own-slot {
+            border: 3px solid #fbbf24 !important; /* Altın Sarısı Kalın Çerçeve */
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.6); /* Dışa doğru parlama */
+            transform: scale(1.02); /* Çok hafif büyüterek öne çıkarma */
+            z-index: 10;
+            position: relative;
+        }
+
+        .you-badge {
+            background: #fbbf24;
+            color: #000;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 8px;
+            text-transform: uppercase;
+        }
+
         /* Zorlama Rol Uyarısı */
         .role-warning {
             color: #ef4444 !important;
@@ -135,7 +154,26 @@
             background: #383844; padding: 8px; margin-bottom: 6px; border-radius: 4px;
             cursor: grab; display: flex; flex-direction: column; gap: 4px;
         }
-        .waitlist-area { min-height: 150px; border: 2px dashed #444; border-radius: 6px; padding: 5px; }
+        .waitlist-area {
+            max-height: 600px;
+            overflow-y: auto;
+            min-height: 150px;
+            border: 2px dashed #444;
+            border-radius: 6px;
+            padding: 10px;
+        }
+        /* Scroll bar'ı daha şık (dark mode uyumlu) yapalım */
+        .waitlist-area::-webkit-scrollbar {
+            width: 6px;
+        }
+        .waitlist-area::-webkit-scrollbar-track {
+            background: #1e1e24;
+        }
+        .waitlist-area::-webkit-scrollbar-thumb {
+            background: #4f46e5;
+            border-radius: 10px;
+        }
+        
         .waitlist-area.drag-over { border-color: #6366f1; background: #323242; }
 
         /* Tags */
@@ -234,6 +272,8 @@
                         @php
                             $attendee = $link->attendees->where('slot_index', $i)->first();
 
+                            $isItMe = $attendee && auth()->check() && $attendee->user_id == auth()->id();
+
                             // 1. Template Bilgilerini Al
                             $templateData = $link->template_snapshot[$i] ?? [];
                             $templateType = $templateData['type'] ?? 'any';
@@ -246,6 +286,8 @@
                             elseif($templateType == 'heal') $slotClass = 'role-heal';
                             elseif($templateType == 'dps') $slotClass = 'role-dps';
                             elseif($templateType == 'supp') $slotClass = 'role-supp';
+
+                            if($isItMe) $slotClass .= ' my-own-slot';
                         @endphp
 
                         <div class="party-slot {{ $slotClass }}"
@@ -254,6 +296,18 @@
                              ondrop="drop(event, {{ $i }})">
 
                             <div class="slot-number">{{ $i }}</div>
+
+                            <div style="flex-grow: 1; display: flex; align-items: center;">
+                                @if($attendee)
+                                    @if($isItMe)
+                                        <span class="you-badge">YOU</span>
+                                    @endif
+
+                                    <div class="player-card" ...>
+                                    </div>
+                                @else
+                                @endif
+                            </div>
 
                             <div style="flex-grow: 1; overflow: hidden; display: flex; align-items: center;">
                                 @if($attendee)
@@ -275,7 +329,20 @@
 
                                         @php
                                             $isMySlot = auth()->id() == $attendee->user_id;
-                                            $shouldSeeWarning = $attendee->is_forced && ($isAdmin || $isMySlot);
+
+                                            // Kullanıcının seçtiği roller arasında 'Fill' var mı kontrol et
+                                            $hasFillRole = in_array('Fill', [
+                                                $attendee->main_role,
+                                                $attendee->second_role,
+                                                $attendee->third_role,
+                                                $attendee->fourth_role
+                                            ]);
+
+                                            // UYARI ŞARTI:
+                                            // 1. Caller rolü zorlamış olmalı ($attendee->is_forced)
+                                            // 2. Kullanıcının rollerinden HİÇBİRİ 'Fill' OLMAMALI (!hasFillRole)
+                                            // 3. Gören kişi Admin veya Slot sahibi olmalı
+                                            $shouldSeeWarning = $attendee->is_forced && !$hasFillRole && ($isAdmin || $isMySlot);
                                         @endphp
 
                                         @if($shouldSeeWarning)
@@ -389,8 +456,12 @@
                    style="border-color: #fbbf24;">
 
             <datalist id="roleOptions">
+                <option value="Fill">Herhangi (Doldur)</option>
+
                 @foreach($availableRoles as $role)
-                    <option value="{{ $role->name }}">{{ $role->category }}</option>
+                    <option value="{{ $role->name }}">
+                        [{{ $role->category }}] {{ $role->name }}
+                    </option>
                 @endforeach
             </datalist>
 
