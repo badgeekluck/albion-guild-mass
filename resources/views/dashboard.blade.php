@@ -120,7 +120,8 @@
                 </div>
 
                 <div class="actions">
-                    <button class="btn-icon" onclick="copyLink('{{ url('/go/' . $link->slug) }}')">
+                    <button onclick="copyToClipboard('{{ url('/go/' . $link->slug) }}')"
+                            style="">
                         📋 Copy URL
                     </button>
 
@@ -141,6 +142,16 @@
 </div>
 
 <script>
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function() {
+            alert('Link kopyalandı: ' + text);
+        }, function(err) {
+            console.error('Kopyalama hatası: ', err);
+            alert('Kopyalanamadı, lütfen manuel seçip kopyalayın.');
+        });
+    }
+
+
     function copyLink(url) {
         navigator.clipboard.writeText(url).then(() => {
             // Basit bir bildirim (Toast eklenebilir ama alert şimdilik yeterli)
