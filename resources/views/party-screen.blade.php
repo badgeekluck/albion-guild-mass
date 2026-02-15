@@ -192,6 +192,34 @@
             </div>
         </div>
     </div>
+    <div style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
+        <div style="background: #10b981; padding: 8px; border-radius: 6px;">👁️</div>
+        <div>
+            <div style="font-size: 11px; text-transform: uppercase; font-weight: bold;">Live Viewers</div>
+            <div style="font-size: 18px; font-weight: bold; color: white;">
+                {{ $viewerCount ?? 1 }}
+            </div>
+        </div>
+    </div>
+
+    @auth
+        <div style="margin-left: 20px; padding-left: 20px; border-left: 1px solid #444; display: flex; flex-direction: column; align-items: flex-end;">
+            <div style="font-size: 12px; color: #ccc; margin-bottom: 4px;">
+                {{ auth()->user()->name }}
+            </div>
+            <a href="{{ route('logout') }}"
+               style="color: #ef4444; font-size: 11px; text-decoration: none; font-weight: bold; border: 1px solid #ef4444; padding: 2px 8px; border-radius: 4px;">
+                LOGOUT
+            </a>
+        </div>
+    @else
+        <div style="margin-left: 20px; padding-left: 20px; border-left: 1px solid #444;">
+            <a href="{{ route('login') }}"
+               style="background: #5865F2; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                Login with Discord
+            </a>
+        </div>
+    @endauth
 </div>
 
 <div class="main-container">
