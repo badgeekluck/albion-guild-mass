@@ -9,7 +9,7 @@ class SharedLink extends Model
 {
     protected $casts = [
         'expires_at' => 'datetime',
-        'template_snapshot' => 'array', // <--- BUNU EKLE (JSON'ı dizi yapar)
+        'template_snapshot' => 'array',
     ];
 
     protected $fillable = [

@@ -25,7 +25,6 @@ class AuthController extends Controller
             return redirect('/')->with('error', 'Giriş yapılamadı.');
         }
 
-        // .env dosyasındaki ayarları çekiyoruz
         $guildId  = env('DISCORD_GUILD_ID');
         $roleId   = env('DISCORD_ROLE_ID');
         $botToken = env('DISCORD_BOT_TOKEN');
