@@ -113,19 +113,22 @@ class LinkController extends Controller
         Cache::put($key, $viewers, 300);
         $viewerCount = count($viewers);
 
-        $rolesInTemplate = collect($snapshot)
-            ->pluck('role')
+
+        $rolesInTemplate = collect($link->template_snapshot ?? [])
             ->filter(function ($roleName) {
+
                 return !empty($roleName)
                     && !in_array($roleName, ['Empty Slot', 'Any', 'Flex', 'Caller', 'Bomb Squad / Flex']);
             })
             ->unique()
             ->values();
 
+
         if ($rolesInTemplate->isNotEmpty()) {
             $availableRoles = GameRole::whereIn('name', $rolesInTemplate)
                 ->orderBy('name', 'asc')
                 ->get();
+
 
             if ($availableRoles->isEmpty()) {
                 $availableRoles = GameRole::whereIn('category', ['Tank', 'Healer', 'DPS', 'Support'])
