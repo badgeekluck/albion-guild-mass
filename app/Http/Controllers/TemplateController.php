@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\PartyTemplate;
+use App\Models\SavedBuild;
 
 class TemplateController extends Controller
 {
@@ -11,6 +12,12 @@ class TemplateController extends Controller
     {
         $templates = PartyTemplate::orderBy('created_at', 'desc')->get();
         return view('templates.index', compact('templates'));
+    }
+
+    public function create()
+    {
+        $builds = SavedBuild::orderBy('name')->get();
+        return view('templates.create', compact('builds'));
     }
 
     public function store(Request $request)
@@ -24,24 +31,29 @@ class TemplateController extends Controller
 
         $structure = [];
         for ($i = 1; $i <= $partySize; $i++) {
-            $structure[$i] = ['role' => 'Any', 'icon' => 'default'];
+            $structure[$i] = ['role' => '', 'note' => '', 'type' => 'any', 'build_id' => null];
         }
 
-        PartyTemplate::create([
+        $template = PartyTemplate::create([
             'name' => $request->name,
             'size' => $partySize,
             'structure' => $structure,
             'created_by' => auth()->id()
         ]);
 
-        return back()->with('success', 'Template oluşturuldu! Düzenlemeye başla.');
+        return redirect()->route('templates.edit', $template->id)
+            ->with('success', 'Template oluşturuldu! Şimdi detayları düzenleyebilirsiniz.');
     }
 
     public function edit($id)
     {
         $template = PartyTemplate::findOrFail($id);
-        return view('templates.edit', compact('template'));
+
+        $builds = SavedBuild::orderBy('name')->get();
+
+        return view('templates.edit', compact('template', 'builds'));
     }
+
 
     public function update(Request $request, $id)
     {
@@ -52,12 +64,12 @@ class TemplateController extends Controller
             'structure' => $request->slots
         ]);
 
-        return redirect()->route('templates.index')->with('success', 'Template güncellendi!');
+        return redirect()->route('templates.index')->with('success', 'Template başarıyla güncellendi!');
     }
 
     public function destroy($id)
     {
         PartyTemplate::findOrFail($id)->delete();
-        return back()->with('success', 'Silindi.');
+        return back()->with('success', 'Template silindi.');
     }
 }

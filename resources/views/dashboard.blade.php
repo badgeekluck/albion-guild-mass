@@ -65,6 +65,11 @@
                         style="margin-right: 10px; background: #4f46e5; border-color: #4f46e5; color: white;">
                     🛡️ Staff List
                 </button>
+                <a href="{{ route('builds.index') }}"
+                   class="btn-secondary"
+                   style="background: #8b5cf6; border-color: #7c3aed; color: white; margin-right: 10px;">
+                    🛠️ Manage Builds
+                </a>
                 <a href="{{ route('attendance.index') }}"
                    class="btn-secondary"
                    style="margin-right: 10px; background: #059669; border-color: #059669; color: white; text-decoration: none; display: inline-flex; align-items: center;">

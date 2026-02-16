@@ -1,9 +1,11 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\GameRole;
 use App\Models\SharedLink;
 use App\Models\LinkClick;
+use App\Models\SavedBuild;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,7 +15,6 @@ class LinkController extends Controller
 {
     public function index(Request $request)
     {
-
         $links = SharedLink::where('creator_id', $request->user()->id)
             ->withCount('clicks')
             ->orderBy('created_at', 'desc')
@@ -24,7 +25,8 @@ class LinkController extends Controller
 
     public function store(Request $request)
     {
-        if ($request->user()->email !== 'admin@gmail.com') { return abort(403); }
+        // Güvenlik kontrolünü kendi mantığına göre düzenleyebilirsin
+        // if ($request->user()->role !== 'admin') { ... }
 
         $request->validate(['url' => 'required|url']);
 
@@ -58,8 +60,52 @@ class LinkController extends Controller
 
     public function showParty($slug)
     {
-        $link = SharedLink::where('slug', $slug)->with('attendees.user')->firstOrFail();
+        // 1. Linki ve ilişkilerini çek
+        $link = SharedLink::with(['attendees', 'creator'])->where('slug', $slug)->firstOrFail();
 
+        // 2. --- BUILD DATA ENJEKSİYONU (DÜZELTİLDİ: KEY KORUMA) ---
+        $snapshot = $link->template_snapshot ?? [];
+
+        // Build ID'lerini topla
+        $buildIds = collect($snapshot)->pluck('build_id')->filter()->unique();
+
+        if ($buildIds->isNotEmpty()) {
+            $builds = SavedBuild::with(['head', 'armor', 'shoe', 'weapon', 'offhand', 'cape', 'food', 'potion'])
+                ->whereIn('id', $buildIds)
+                ->get()
+                ->keyBy('id');
+
+            $enrichedSnapshot = [];
+
+            foreach($snapshot as $key => $slot) {
+                if (isset($slot['build_id']) && isset($builds[$slot['build_id']])) {
+                    $b = $builds[$slot['build_id']];
+
+                    $slot['build'] = [
+                        'name' => $b->name,
+                        'notes' => $b->notes,
+                        'head_item' => $b->head,
+                        'armor_item' => $b->armor,
+                        'shoe_item' => $b->shoe,
+                        'weapon_item' => $b->weapon,
+                        'offhand_item' => $b->offhand,
+                        'cape_item' => $b->cape,
+                        'food_item' => $b->food,
+                        'potion_item' => $b->potion,
+                    ];
+
+                    if(empty($slot['role']) || $slot['role'] == 'Any') {
+                        $slot['role'] = $b->name;
+                    }
+                }
+                $enrichedSnapshot[$key] = $slot;
+            }
+
+            $link->template_snapshot = $enrichedSnapshot;
+        }
+        // ----------------------------------------
+
+        // 3. Canlı İzleyici Sayısı
         $key = 'party_viewers_' . $slug;
         $viewers = Cache::get($key, []);
         $identifier = auth()->check() ? 'user_'.auth()->id() : 'ip_'.request()->ip();
@@ -67,22 +113,11 @@ class LinkController extends Controller
         foreach ($viewers as $id => $time) {
             if ($time->diffInMinutes(now()) > 5) unset($viewers[$id]);
         }
-
         Cache::put($key, $viewers, 300);
         $viewerCount = count($viewers);
 
-        $compRoles = collect($link->template_snapshot ?? [])
-            ->pluck('role')
-            ->filter(function ($value) {
-                return $value && $value !== 'Any';
-            })
-            ->unique()
-            ->values();
-
-
-        $availableRoles = GameRole::whereIn('name', $compRoles)
-            ->orderBy('name', 'asc')
-            ->get();
+        // 4. Dropdown Roller
+        $availableRoles = GameRole::orderBy('name', 'asc')->get();
 
         return view('party-screen', compact('link', 'viewerCount', 'availableRoles'));
     }
@@ -117,20 +152,12 @@ class LinkController extends Controller
 
         $validated = $request->validate([
             'in_game_name' => 'required|string|max:20',
-
-            'main_role' => [
-                'required',
-                Rule::in($validRoles)
-            ],
-
+            'main_role' => ['required', Rule::in($validRoles)],
             'second_role' => ['nullable', Rule::in($validRoles)],
             'third_role'  => ['nullable', Rule::in($validRoles)],
             'fourth_role' => ['nullable', Rule::in($validRoles)],
         ], [
-            'main_role.in' => 'Seçtiğiniz rol geçerli değil. Lütfen listeden seçin.',
-            'second_role.in' => 'İkinci rol geçerli değil.',
-            'third_role.in' => 'Üçüncü rol geçerli değil.',
-            'fourth_role.in' => 'Dördüncü rol geçerli değil.',
+            'main_role.in' => 'Seçtiğiniz rol geçerli değil.',
         ]);
 
         $link->attendees()->updateOrCreate(
@@ -141,7 +168,6 @@ class LinkController extends Controller
         return back()->with('success', 'Joined successfully!');
     }
 
-    // [API] Member Move IN List
     public function moveMember(Request $request, $slug)
     {
         $link = SharedLink::where('slug', $slug)->firstOrFail();
@@ -158,10 +184,11 @@ class LinkController extends Controller
         $isForced = false;
 
         if ($targetSlot > 0) {
-            $requiredRole = $link->template_snapshot[$targetSlot]['role'] ?? null;
+            $snapshotIndex = $targetSlot;
 
-            if ($requiredRole && $requiredRole !== 'Any') {
+            $requiredRole = $link->template_snapshot[$snapshotIndex]['role'] ?? null;
 
+            if ($requiredRole && $requiredRole !== 'Any' && $requiredRole !== 'Bomb Squad / Flex') {
                 $roles = [
                     $attendee->main_role,
                     $attendee->second_role,
@@ -170,7 +197,6 @@ class LinkController extends Controller
                 ];
 
                 $matchFound = false;
-
                 foreach ($roles as $role) {
                     if ($role && (stripos($requiredRole, $role) !== false || stripos($role, $requiredRole) !== false)) {
                         $assignedRole = $role;

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\BuildController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\LinkController;
@@ -46,6 +47,10 @@ Route::middleware(['auth', AdminCheck::class])->group(function () {
     Route::get('/templates/{id}/edit', [TemplateController::class, 'edit'])->name('templates.edit');
     Route::put('/templates/{id}', [TemplateController::class, 'update'])->name('templates.update');
     Route::delete('/templates/{id}', [TemplateController::class, 'destroy'])->name('templates.destroy');
+
+    Route::middleware(['auth', AdminCheck::class])->group(function () {
+        Route::resource('builds', BuildController::class);
+    });
 
 });
 

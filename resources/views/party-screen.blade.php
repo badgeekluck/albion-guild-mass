@@ -141,8 +141,11 @@
             display: flex; align-items: center; margin-bottom: 6px;
             padding: 0 10px; height: 44px; border-radius: 4px;
             transition: all 0.2s; position: relative; font-size: 14px;
+            cursor: pointer; /* Tıklanabilir olduğunu göster */
         }
         .party-slot.drag-over { border: 2px dashed #6366f1; background: #32324a; }
+        /* Build detayı için hover efekti */
+        .party-slot:hover { background-color: rgba(255, 255, 255, 0.05); }
 
         .slot-number { font-weight: bold; color: rgba(255,255,255,0.6); width: 25px; font-size: 12px; }
 
@@ -186,18 +189,9 @@
             border-radius: 6px;
             padding: 10px;
         }
-        /* Scroll bar'ı daha şık (dark mode uyumlu) yapalım */
-        .waitlist-area::-webkit-scrollbar {
-            width: 6px;
-        }
-        .waitlist-area::-webkit-scrollbar-track {
-            background: #1e1e24;
-        }
-        .waitlist-area::-webkit-scrollbar-thumb {
-            background: #4f46e5;
-            border-radius: 10px;
-        }
-
+        .waitlist-area::-webkit-scrollbar { width: 6px; }
+        .waitlist-area::-webkit-scrollbar-track { background: #1e1e24; }
+        .waitlist-area::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 10px; }
         .waitlist-area.drag-over { border-color: #6366f1; background: #323242; }
 
         /* Tags */
@@ -211,16 +205,19 @@
         .modal-content { background: #2b2b36; margin: 10% auto; padding: 30px; border-radius: 12px; max-width: 400px; color: white; position: relative; }
         .btn-join { width: 100%; padding: 12px; background: #6366f1; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-join:hover { background: #4f46e5; }
+        .close-btn { float: right; cursor: pointer; font-size: 24px; color: #aaa; }
+        .close-btn:hover { color: white; }
 
-         @media (max-width:1600px) {
-              .roster-area{overflow-y: auto; max-width: 1115px;}
-         }
+
+        @media (max-width:1600px) {
+            .roster-area{overflow-y: auto; max-width: 1115px;}
+        }
 
 
         @media (max-width: 767px) {
-             .sidebar{width:100%; order:1;}
-             .roster-area{order:2;}
-             .main-container {flex-wrap:wrap;}
+            .sidebar{width:100%; order:1;}
+            .roster-area{order:2;}
+            .main-container {flex-wrap:wrap;}
         }
 
 
@@ -229,7 +226,6 @@
         .header-wrapper .header-item{display: flex; align-items: center; gap: 10px;}
         .header-wrapper .header-auth{margin-left: 20px; padding-left: 20px; border-left: 1px solid #444; display: flex; flex-direction: column; align-items: flex-end;}
         .header-wrapper .header-login{margin-left: 20px; padding-left: 20px; border-left: 1px solid #444;}
-
         .header-wrapper .header-icon{padding: 8px; border-radius: 6px;}
 
         @media (max-width: 767px) {
@@ -239,6 +235,60 @@
             .header-wrapper .header-icon{padding:4px; font-size:12px;}
         }
 
+        /* Build Modal Specific CSS */
+        .albion-equipment-grid {
+            display: grid;
+            /* 3 Kolon (Sol - Orta - Sağ), 3 Satır */
+            grid-template-columns: 80px 80px 80px;
+            grid-template-rows: 80px 80px 80px;
+            gap: 12px;
+            justify-content: center;
+            background: #2b2b36;
+            padding: 25px;
+            border-radius: 8px;
+            border: 2px solid #444;
+            margin-top: 15px;
+
+            /* İSTEDİĞİN DÜZEN BURADA AYARLANIYOR */
+            grid-template-areas:
+            ".    head cape"  /* 1. Satır: Boş - Kafa - Pelerin */
+            "wep  arm  off"   /* 2. Satır: Silah - Zırh - Offhand */
+            "pot  shoe food"; /* 3. Satır: Pot - Ayakkabı - Yemek */
+        }
+        /* Alanları Eşleştirme */
+        .area-head { grid-area: head; }
+        .area-cape { grid-area: cape; }
+        .area-wep  { grid-area: wep; }
+        .area-arm  { grid-area: arm; }
+        .area-off  { grid-area: off; }
+        .area-pot  { grid-area: pot; }   /* Sol Alt */
+        .area-shoe { grid-area: shoe; }
+        .area-food { grid-area: food; }  /* Sağ Alt */
+        .eq-slot {
+            background: #1e1e24;
+            border: 1px solid #555;
+            border-radius: 6px;
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        .eq-slot img { width: 90%; height: 90%; object-fit: contain; }
+        .eq-label { position: absolute; bottom: 2px; right: 4px; font-size: 9px; color: #666; pointer-events: none; font-weight: bold; }
+
+        /* Grid Yerleşimi (Albion Envanteri) */
+        #eq-head { grid-column: 2; grid-row: 1; }
+        #eq-cape { grid-column: 1; grid-row: 2; }
+        #eq-armor { grid-column: 2; grid-row: 2; }
+        #eq-weapon { grid-column: 1; grid-row: 2; /* Silah için özel yerleşim */ transform: translateX(-90px); }
+        #eq-offhand { grid-column: 3; grid-row: 2; }
+        #eq-shoe { grid-column: 2; grid-row: 3; }
+        /* Weapon'ı soldaki boşluğa manuel çekiyoruz çünkü grid tam oturmayabilir */
+        /* Daha basit grid: 3x3 */
+        /*
+           . . Head . .
+           Weap Arm Off
+           . . Shoe . .
+        */
 
     </style>
 </head>
@@ -359,10 +409,10 @@
                     <div class="party-header">Party {{ $p + 1 }}</div>
 
                     <div class="slots-container">
-                    @php
-                        $start = ($p * 20) + 1;
-                        $end = min(($p * 20) + 20, $maxSlots);
-                    @endphp
+                        @php
+                            $start = ($p * 20) + 1;
+                            $end = min(($p * 20) + 20, $maxSlots);
+                        @endphp
 
                         @for ($i = $start; $i <= $end; $i++)
                             @php
@@ -372,17 +422,20 @@
                                 $isExtraSlot = $i > $templateSlots;
 
                                 if (!$isExtraSlot) {
-
                                     $templateData = $link->template_snapshot[$i] ?? ($link->template_snapshot[$i-1] ?? []);
-
                                     $templateType = $templateData['type'] ?? 'any';
                                     $templateRole = $templateData['role'] ?? 'Any';
                                     $templateNote = $templateData['note'] ?? '';
-                                } else {
 
+                                    // BUILD DATA (Saved Build Bilgisi Varsa)
+                                    // Burada varsayıyoruz ki template_snapshot içinde 'build' objesi de var.
+                                    // Eğer yoksa boş geçecek.
+                                    $buildData = $templateData['build'] ?? null;
+                                } else {
                                     $templateType = 'dps';
                                     $templateRole = 'Bomb Squad / Flex';
                                     $templateNote = 'Flexible Slot';
+                                    $buildData = null;
                                 }
 
                                 $slotClass = 'role-any';
@@ -392,10 +445,10 @@
                                 elseif($templateType == 'supp') $slotClass = 'role-supp';
 
                                 if($isItMe) $slotClass .= ' my-own-slot';
-
                             @endphp
 
                             <div class="party-slot {{ $slotClass }}"
+                                 onclick="openBuildModal({{ json_encode($buildData) }}, '{{ $templateRole }}', '{{ $templateNote }}')"
                                  ondragover="allowDrop(event)"
                                  ondragleave="leaveDrop(event)"
                                  ondrop="drop(event, {{ $i }})">
@@ -406,11 +459,10 @@
                                     @if($attendee)
                                         @if($isItMe) <span class="you-badge">YOU</span> @endif
 
-                                            <div class="player-card {{ $isAdmin ? 'draggable-enabled' : '' }}"
-                                                 draggable="{{ $isAdmin ? 'true' : 'false' }}"
-                                                 ondragstart="drag(event, {{ $attendee->id }})">
-
-                                            <div class="slot-user" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.1; margin-right: 5px; overflow: hidden;">
+                                        <div class="player-card {{ $isAdmin ? 'draggable-enabled' : '' }}"
+                                             draggable="{{ $isAdmin ? 'true' : 'false' }}"
+                                             ondragstart="drag(event, {{ $attendee->id }})"
+                                             onclick="event.stopPropagation()"> <div class="slot-user" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.1; margin-right: 5px; overflow: hidden;">
                                             <span style="font-weight: bold; color: #fff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                 {{ $attendee->in_game_name ?? $attendee->user->name }}
                                             </span>
@@ -452,7 +504,10 @@
                                 </div>
 
                                 @if($templateNote)
-                                    <div class="slot-note-fixed" title="{{ $templateNote }}">{{ $templateNote }}</div>
+                                    <div class="slot-note-fixed" title="{{ $templateNote }}">
+                                        {{ $templateNote }}
+                                        @if(!empty($buildData)) <span style="font-size:9px;">🛠️</span> @endif
+                                    </div>
                                 @endif
                             </div>
                         @endfor
@@ -507,7 +562,7 @@
 
 <div id="joinModal" class="modal" onclick="if(event.target==this)this.style.display='none'">
     <div class="modal-content">
-        <span style="float:right; cursor:pointer; font-size:24px;" onclick="document.getElementById('joinModal').style.display='none'">&times;</span>
+        <span class="close-btn" onclick="document.getElementById('joinModal').style.display='none'">&times;</span>
         <h2>Join Party</h2>
         @if ($errors->any())
             <div style="background-color: rgba(220, 38, 38, 0.2); border: 1px solid #dc2626; color: #fca5a5; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
@@ -518,43 +573,25 @@
                     @endforeach
                 </ul>
             </div>
-
-            <script>
-                document.addEventListener("DOMContentLoaded", function() {
-                    document.getElementById('joinModal').style.display = 'block';
-                });
-            </script>
         @endif
         <form action="/go/{{ $link->slug }}/join" method="POST">
             @csrf
-
             <label style="color: #fbbf24; font-weight: bold;">In-Game Name (IGN)</label>
-            <input type="text" name="in_game_name"
-                   placeholder="Exact character name..."
-                   value="{{ auth()->user()->attendees->where('link_id', $link->id)->first()->in_game_name ?? '' }}"
-                   required
-                   class="role-input"
-                   style="border-color: #fbbf24;">
+            <input type="text" name="in_game_name" placeholder="Exact character name..." value="{{ auth()->user()->attendees->where('link_id', $link->id)->first()->in_game_name ?? '' }}" required class="role-input" style="border-color: #fbbf24;">
 
             <datalist id="roleOptions">
                 <option value="Fill">Herhangi (Doldur)</option>
-
                 @foreach($availableRoles as $role)
-                    <option value="{{ $role->name }}">
-                        [{{ $role->category }}] {{ $role->name }}
-                    </option>
+                    <option value="{{ $role->name }}">[{{ $role->category }}] {{ $role->name }}</option>
                 @endforeach
             </datalist>
 
             <label>Main Role</label>
             <input list="roleOptions" name="main_role" placeholder="Select or type weapon..." required class="role-input">
-
             <label>Second Role</label>
             <input list="roleOptions" name="second_role" placeholder="Select or type weapon..." class="role-input">
-
             <label>Third Role</label>
             <input list="roleOptions" name="third_role" placeholder="Select or type weapon..." class="role-input">
-
             <label>Fourth Role</label>
             <input list="roleOptions" name="fourth_role" placeholder="Select or type weapon..." class="role-input">
 
@@ -563,41 +600,95 @@
     </div>
 </div>
 
-<script>
-    function drag(ev, attendeeId) {
-        if (ev.target.getAttribute('draggable') !== 'true') {
-            ev.preventDefault();
-            return false;
-        }
+<div id="buildModal" class="modal" onclick="if(event.target==this) closeBuildModal()">
+    <div class="modal-content" style="max-width: 420px; text-align: center;">
+        <span class="close-btn" onclick="closeBuildModal()">&times;</span>
 
+        <h2 id="modalBuildName" style="color: #fbbf24; margin-bottom: 5px; font-size: 20px;"></h2>
+        <div id="modalRoleName" style="color: #888; margin-bottom: 20px; font-size: 14px; text-transform: uppercase; font-weight: bold;"></div>
+
+        <div class="albion-equipment-grid" id="albionGrid">
+            <div class="eq-slot area-head" id="eq-head"><span class="eq-label">HEAD</span></div>
+            <div class="eq-slot area-cape" id="eq-cape"><span class="eq-label">CAPE</span></div>
+
+            <div class="eq-slot area-wep" id="eq-weapon"><span class="eq-label">MAIN</span></div>
+            <div class="eq-slot area-arm" id="eq-armor"><span class="eq-label">ARMOR</span></div>
+            <div class="eq-slot area-off" id="eq-offhand"><span class="eq-label">OFF</span></div>
+
+            <div class="eq-slot area-pot" id="eq-potion"><span class="eq-label">POT</span></div>
+            <div class="eq-slot area-shoe" id="eq-shoe"><span class="eq-label">SHOE</span></div>
+            <div class="eq-slot area-food" id="eq-food"><span class="eq-label">FOOD</span></div>
+        </div>
+
+        <div id="modalNoBuild" style="display: none; padding: 20px; color: #666; font-style: italic;">
+            No specific build defined for this slot.
+        </div>
+
+        <p id="modalNotes" style="color: #ccc; margin-top: 15px; font-style: italic; background: #222; padding: 10px; border-radius: 4px; border: 1px solid #444;"></p>
+    </div>
+</div>
+<script>
+    // --- DRAG AND DROP ---
+    function drag(ev, attendeeId) {
+        if (ev.target.getAttribute('draggable') !== 'true') { ev.preventDefault(); return false; }
         ev.dataTransfer.setData("attendeeId", attendeeId);
         ev.target.classList.add('is-dragging');
     }
-    function allowDrop(ev) {
-        ev.preventDefault();
-        let target = ev.target.closest('.party-slot') || ev.target.closest('.waitlist-area');
-        if (target) target.classList.add('drag-over');
-    }
-    function leaveDrop(ev) {
-        let target = ev.target.closest('.party-slot') || ev.target.closest('.waitlist-area');
-        if (target) target.classList.remove('drag-over');
-    }
+    function allowDrop(ev) { ev.preventDefault(); let target = ev.target.closest('.party-slot') || ev.target.closest('.waitlist-area'); if (target) target.classList.add('drag-over'); }
+    function leaveDrop(ev) { let target = ev.target.closest('.party-slot') || ev.target.closest('.waitlist-area'); if (target) target.classList.remove('drag-over'); }
     function drop(ev, slotIndex) {
         ev.preventDefault();
         var attendeeId = ev.dataTransfer.getData("attendeeId");
         var slug = "{{ $link->slug }}";
         var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
         fetch(`/go/${slug}/move`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': token},
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': token},
             body: JSON.stringify({ attendee_id: attendeeId, target_slot: slotIndex })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if(data.success) location.reload();
-                else alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
-            });
+        }).then(response => response.json()).then(data => { if(data.success) location.reload(); else alert('Hata: ' + (data.error || 'Bilinmeyen hata')); });
+    }
+
+    function openBuildModal(buildData, roleName, notes) {
+        if(!buildData && !notes) return;
+
+        document.getElementById('modalBuildName').innerText = buildData ? buildData.name : 'Build Details';
+        document.getElementById('modalRoleName').innerText = roleName;
+        document.getElementById('modalNotes').innerText = notes || 'No special notes.';
+        document.getElementById('modalNotes').style.display = notes ? 'block' : 'none';
+
+        const grid = document.getElementById('albionGrid');
+        const noBuildMsg = document.getElementById('modalNoBuild');
+
+        if (buildData) {
+            grid.style.display = 'grid';
+            noBuildMsg.style.display = 'none';
+            setItemImage('eq-head', buildData.head_item);
+            setItemImage('eq-cape', buildData.cape_item);
+            setItemImage('eq-weapon', buildData.weapon_item);
+            setItemImage('eq-armor', buildData.armor_item);
+            setItemImage('eq-offhand', buildData.offhand_item);
+            setItemImage('eq-shoe', buildData.shoe_item);
+            setItemImage('eq-potion', buildData.potion_item);
+            setItemImage('eq-food', buildData.food_item);
+        } else {
+            grid.style.display = 'none';
+            noBuildMsg.style.display = 'block';
+        }
+
+        document.getElementById('buildModal').style.display = 'block';
+    }
+
+    function closeBuildModal() {
+        document.getElementById('buildModal').style.display = 'none';
+    }
+
+    function setItemImage(elementId, item) {
+        const el = document.getElementById(elementId);
+        if(item && item.icon) {
+            el.innerHTML = `<img src="https://render.albiononline.com/v1/item/${item.icon}.png" title="${item.name}">`;
+        } else {
+            // İkon yoksa placeholder
+            el.innerHTML = `<span class="eq-label" style="position:static; font-size:12px; opacity:0.3;">EMPTY</span>`;
+        }
     }
 </script>
 
