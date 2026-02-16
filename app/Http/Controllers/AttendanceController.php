@@ -13,6 +13,7 @@ class AttendanceController extends Controller
         $attendees = LinkAttendee::whereHas('link', function($q) {
             $q->withTrashed();
         })
+            ->whereNotNull('slot_index')
             ->get();
 
         $playerStats = $attendees->groupBy('in_game_name')->map(function($records) {
