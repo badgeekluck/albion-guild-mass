@@ -215,12 +215,33 @@ class LinkController extends Controller
     {
         $link = SharedLink::where('slug', $slug)->firstOrFail();
 
-        $isAuthorized = $link->creator_id === auth()->id() ||
-            in_array($request->user()->role, ['admin', 'content-creator']);
-
-        if (! $isAuthorized) return response()->json(['error' => 'Yetkisiz işlem'], 403);
-
         $attendee = $link->attendees()->where('id', $request->attendee_id)->firstOrFail();
+
+        $user = auth()->user();
+
+        $isManager = in_array($user->role, ['admin', 'content-creator']) || $link->creator_id == $user->id;
+
+        $isMovingSelf = $attendee->user_id == $user->id;
+
+        if (!$isManager) {
+            // 1. CTA Partisi: Üyeler ASLA dokunamaz
+            if ($link->type === 'cta') {
+                return response()->json(['error' => 'Yetkisiz işlem: CTA modunda sadece Caller yerleşim yapabilir.'], 403);
+            }
+
+            if ($link->type === 'content' && !$isMovingSelf) {
+                return response()->json(['error' => 'Sadece kendi yerini değiştirebilirsin.'], 403);
+            }
+
+
+            if ($request->target_slot > 0) {
+                $isSlotTaken = $link->attendees()->where('slot_index', $request->target_slot)->exists();
+                if ($isSlotTaken) {
+                    return response()->json(['error' => 'Bu slot dolu! Sadece boş slotlara geçebilirsin.'], 403);
+                }
+            }
+        }
+
         $targetSlot = $request->target_slot;
 
         $assignedRole = $attendee->main_role;
@@ -255,9 +276,11 @@ class LinkController extends Controller
             }
         }
 
+
         $existingPerson = $link->attendees()->where('slot_index', $targetSlot)->first();
+
         if ($targetSlot > 0 && $existingPerson) {
-            $existingPerson->update(['slot_index' => $attendee->slot_index]);
+            $existingPerson->update(['slot_index' => null]);
         }
 
         $attendee->update([
