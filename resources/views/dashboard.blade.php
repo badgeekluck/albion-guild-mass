@@ -8,12 +8,10 @@
         body { font-family: 'Segoe UI', sans-serif; background-color: #111827; color: #e5e7eb; margin: 0; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
 
-        /* Header */
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #374151; padding-bottom: 20px; }
         h1 { margin: 0; font-size: 24px; color: #fff; }
         .user-info { font-size: 14px; color: #9ca3af; }
 
-        /* Create Section */
         .create-card { background: #1f2937; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
         .create-form { display: flex; gap: 10px; align-items: center; width: 100%; }
 
@@ -27,7 +25,6 @@
         .btn-manage { background: #4b5563; padding: 8px 12px; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; }
         .btn-manage:hover { background: #374151; }
 
-        /* Links List */
         .link-card { background: #1f2937; padding: 20px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s; border: 1px solid #374151; }
         .link-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-color: #4b5563; }
 
@@ -42,7 +39,6 @@
         .btn-delete { background: #ef4444; border-color: #dc2626; color: white; }
         .btn-delete:hover { background: #dc2626; }
 
-        /* Badge Stilleri */
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
         .badge-green { background: #065f46; color: #34d399; border: 1px solid #059669; }
         .badge-gray { background: #374151; color: #d1d5db; border: 1px solid #4b5563; }
@@ -96,11 +92,10 @@
     @if($links->count() > 0)
         @foreach($links as $link)
             @php
-                // DİNAMİK SLOT HESABI: Snapshot varsa onun sayısını al, yoksa 20
+
                 $totalSlots = is_array($link->template_snapshot) ? count($link->template_snapshot) : 20;
                 $filledSlots = $link->attendees_count;
 
-                // Doluluk oranı
                 $percent = $totalSlots > 0 ? round(($filledSlots / $totalSlots) * 100) : 0;
             @endphp
 

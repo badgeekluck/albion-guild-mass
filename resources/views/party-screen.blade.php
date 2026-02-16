@@ -8,16 +8,14 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #1e1e24; color: #e2e2e2; padding: 20px; margin: 0; }
 
-        /* Layout */
         .main-container {
             display: flex;
             gap: 20px;
             width: 98%;
             margin: 0 auto;
             align-items: flex-start;
-            /* Ekran yüksekliğinden üst barı çıkarıyoruz */
             height: calc(100vh - 120px);
-            overflow: hidden; /* Dışarıdan taşmayı engelle */
+            overflow: hidden;
         }
 
         @media (max-width: 1400px) {
@@ -25,16 +23,16 @@
         }
 
         .slot-note-fixed {
-            font-size: 11px;       /* Biraz daha büyük */
-            color: #fbbf24;        /* Amber/Altın Sarısı (Dikkat çeker) */
-            font-weight: 600;      /* Kalın yazı */
+            font-size: 11px;
+            color: #fbbf24;
+            font-weight: 600;
             font-style: italic;
-            margin-left: auto;     /* En sağa yasla */
+            margin-left: auto;
             padding-left: 10px;
-            white-space: nowrap;   /* Alt satıra inmesin */
-            max-width: 120px;      /* Çok uzunsa taşmasın */
+            white-space: nowrap;
+            max-width: 120px;
             overflow: hidden;
-            text-overflow: ellipsis; /* ... koysun */
+            text-overflow: ellipsis;
             opacity: 0.9;
         }
 
@@ -54,9 +52,9 @@
         }
 
         .my-own-slot {
-            border: 3px solid #fbbf24 !important; /* Altın Sarısı Kalın Çerçeve */
-            box-shadow: 0 0 15px rgba(251, 191, 36, 0.6); /* Dışa doğru parlama */
-            transform: scale(1.02); /* Çok hafif büyüterek öne çıkarma */
+            border: 3px solid #fbbf24 !important;
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.6);
+            transform: scale(1.02);
             z-index: 10;
             position: relative;
         }
@@ -72,7 +70,6 @@
             text-transform: uppercase;
         }
 
-        /* Zorlama Rol Uyarısı */
         .role-warning {
             color: #ef4444 !important;
             font-weight: bold;
@@ -102,7 +99,7 @@
             gap: 15px;
             align-items: flex-start;
             padding-bottom: 10px;
-            overflow-x: auto; /* Yatayda kolonlar arası kaydırma */
+            overflow-x: auto;
             height: 100%;
         }
 
@@ -114,13 +111,13 @@
             padding: 8px;
             display: flex;
             flex-direction: column;
-            max-height: 100%; /* Konteyner boyunu aşmasın */
+            max-height: 100%;
         }
 
         .slots-container {
             overflow-y: auto;
             flex-grow: 1;
-            padding-right: 4px; /* Scroll bar için pay */
+            padding-right: 4px;
         }
 
         .slots-container::-webkit-scrollbar {
@@ -141,7 +138,6 @@
             text-transform: uppercase; letter-spacing: 1px;
         }
 
-        /* Slot Tasarımı */
         .party-slot {
             display: flex; align-items: center; margin-bottom: 6px;
             padding: 0 10px; height: 44px; border-radius: 4px;
@@ -159,14 +155,13 @@
         .slot-user { font-weight: bold; color: #fff; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px;}
         .slot-role { font-size: 10px; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px; color: #ddd; text-transform: uppercase; }
 
-        /* RENKLER (BACKGROUND) */
+        /* (BACKGROUND) */
         .role-tank { background-color: rgba(37, 99, 235, 0.4) !important; border: 1px solid #2563eb; }
         .role-heal { background-color: rgba(22, 163, 74, 0.4) !important; border: 1px solid #16a34a; }
         .role-dps  { background-color: rgba(220, 38, 38, 0.4) !important; border: 1px solid #dc2626; }
         .role-supp { background-color: rgba(217, 119, 6, 0.4) !important; border: 1px solid #d97706; }
-        .role-any  { background-color: #2b2b36 !important; border-left: 3px solid #444; } /* Gri - Varsayılan */
+        .role-any  { background-color: #2b2b36 !important; border-left: 3px solid #444; }
 
-        /* Waitlist & Sidebar */
         .sidebar {
             width: 300px;
             background: #2b2b36;
@@ -344,28 +339,22 @@
                                 $attendee = $link->attendees->where('slot_index', $i)->first();
                                 $isItMe = $attendee && auth()->check() && $attendee->user_id == auth()->id();
 
-                                // --- YENİ MANTIK BAŞLANGIÇ ---
-
-                                // Bu slot ekstra mı?
                                 $isExtraSlot = $i > $templateSlots;
 
                                 if (!$isExtraSlot) {
-                                    // NORMAL SLOT (Şablondan gelen)
-                                    // Not: Dizi indexi 0'dan başlar, slot 1'den. O yüzden $i-1 kullanmak daha güvenlidir,
-                                    // ama senin kodunda $i kullanılmış. Eğer kayma olursa burayı $i-1 yap.
+
                                     $templateData = $link->template_snapshot[$i] ?? ($link->template_snapshot[$i-1] ?? []);
 
                                     $templateType = $templateData['type'] ?? 'any';
                                     $templateRole = $templateData['role'] ?? 'Any';
                                     $templateNote = $templateData['note'] ?? '';
                                 } else {
-                                    // EKSTRA SLOT (Bomb Squad)
-                                    $templateType = 'dps'; // Varsayılan renk (Kırmızı)
-                                    $templateRole = 'Bomb Squad / Flex'; // Görünen isim
+
+                                    $templateType = 'dps';
+                                    $templateRole = 'Bomb Squad / Flex';
                                     $templateNote = 'Flexible Slot';
                                 }
 
-                                // Renk Sınıfı
                                 $slotClass = 'role-any';
                                 if($templateType == 'tank') $slotClass = 'role-tank';
                                 elseif($templateType == 'heal') $slotClass = 'role-heal';
@@ -374,7 +363,6 @@
 
                                 if($isItMe) $slotClass .= ' my-own-slot';
 
-                                // --- YENİ MANTIK BİTİŞ ---
                             @endphp
 
                             <div class="party-slot {{ $slotClass }}"
@@ -405,8 +393,6 @@
                                                 $isMySlot = auth()->id() == $attendee->user_id;
                                                 $hasFillRole = in_array('Fill', [$attendee->main_role, $attendee->second_role, $attendee->third_role, $attendee->fourth_role]);
 
-                                                // UYARI GÜNCELLEMESİ:
-                                                // Eğer $isExtraSlot ise (Bomb Squad), uyarı verme! (&& !$isExtraSlot eklendi)
                                                 $shouldSeeWarning = !$isExtraSlot && $attendee->is_forced && !$hasFillRole && ($isAdmin || $isMySlot);
                                             @endphp
 

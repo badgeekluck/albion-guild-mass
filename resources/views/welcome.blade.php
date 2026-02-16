@@ -9,7 +9,7 @@
             margin: 0;
             padding: 0;
             font-family: 'Segoe UI', sans-serif;
-            background-color: #0f172a; /* Koyu Arkaplan */
+            background-color: #0f172a;
             color: #e2e8f0;
             height: 100vh;
             display: flex;
@@ -41,22 +41,22 @@
             transition: transform 0.2s, opacity 0.2s;
             border: none;
             cursor: pointer;
-            box-sizing: border-box; /* Padding taşmasını önler */
+            box-sizing: border-box;
         }
         .btn:hover { transform: translateY(-2px); opacity: 0.9; }
 
         .btn-discord {
-            background-color: #5865F2; /* Discord Rengi */
+            background-color: #5865F2;
             color: white;
         }
 
         .btn-dashboard {
-            background-color: #6366f1; /* Indigo (Tema Rengi) */
+            background-color: #6366f1;
             color: white;
         }
 
         .btn-logout {
-            background-color: #ef4444; /* Kırmızı */
+            background-color: #ef4444;
             color: white;
             margin-top: 10px;
         }

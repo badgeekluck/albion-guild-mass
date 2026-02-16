@@ -72,11 +72,11 @@ class LinkController extends Controller
         $viewerCount = count($viewers);
 
         $compRoles = collect($link->template_snapshot ?? [])
-            ->pluck('role') // Sadece isimleri al (örn: "Hallowfall", "1h Mace")
+            ->pluck('role')
             ->filter(function ($value) {
-                return $value && $value !== 'Any'; // Boş ve Any olanları at
+                return $value && $value !== 'Any';
             })
-            ->unique() // Aynı silahtan 10 tane varsa 1 kere al
+            ->unique()
             ->values();
 
 

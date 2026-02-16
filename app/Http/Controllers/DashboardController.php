@@ -12,9 +12,8 @@ class DashboardController extends Controller
     public function index()
     {
         $templates = PartyTemplate::all();
-        // Sadece Admin ve Content-Creator girebilir (Middleware'de de kontrol edeceğiz)
         $links = SharedLink::where('creator_id', auth()->id())
-            ->withCount('attendees') // Kaç kişi partiye katılmış
+            ->withCount('attendees')
             ->orderBy('created_at', 'desc')
             ->get();
 

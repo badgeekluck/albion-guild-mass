@@ -108,8 +108,8 @@
 
                     @for ($i = $start; $i <= $end; $i++)
                         @php
-                            $roleName = $template->structure[$i]['role'] ?? ''; // Silah (Örn: 1h Mace)
-                            $roleNote = $template->structure[$i]['note'] ?? ''; // Not (Örn: Judi Helmet) - YENİ
+                            $roleName = $template->structure[$i]['role'] ?? '';
+                            $roleNote = $template->structure[$i]['note'] ?? '';
                             $roleType = $template->structure[$i]['type'] ?? 'any';
 
                             $bgClass = 'bg-any';
