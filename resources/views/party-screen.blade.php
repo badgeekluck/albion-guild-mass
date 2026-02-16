@@ -266,13 +266,23 @@
 
     @auth
         <div style="margin-left: 20px; padding-left: 20px; border-left: 1px solid #444; display: flex; flex-direction: column; align-items: flex-end;">
-            <div style="font-size: 12px; color: #ccc; margin-bottom: 4px;">
+            <div style="font-size: 12px; color: #ccc; margin-bottom: 6px;">
                 {{ auth()->user()->name }}
             </div>
-            <a href="{{ route('logout') }}"
-               style="color: #ef4444; font-size: 11px; text-decoration: none; font-weight: bold; border: 1px solid #ef4444; padding: 2px 8px; border-radius: 4px;">
-                LOGOUT
-            </a>
+
+            <div style="display: flex; gap: 8px;">
+                @if(in_array(auth()->user()->role, ['admin', 'content-creator']))
+                    <a href="{{ route('dashboard') }}"
+                       style="color: #6366f1; background: rgba(99, 102, 241, 0.1); font-size: 11px; text-decoration: none; font-weight: bold; border: 1px solid #6366f1; padding: 3px 10px; border-radius: 4px; transition: all 0.2s;">
+                        ⬅ DASHBOARD
+                    </a>
+                @endif
+
+                <a href="{{ route('logout') }}"
+                   style="color: #ef4444; background: rgba(239, 68, 68, 0.1); font-size: 11px; text-decoration: none; font-weight: bold; border: 1px solid #ef4444; padding: 3px 10px; border-radius: 4px;">
+                    LOGOUT
+                </a>
+            </div>
         </div>
     @else
         <div style="margin-left: 20px; padding-left: 20px; border-left: 1px solid #444;">
