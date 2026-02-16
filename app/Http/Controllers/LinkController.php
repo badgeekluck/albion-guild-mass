@@ -144,7 +144,6 @@ class LinkController extends Controller
 
         return view('party-screen', compact('link', 'viewerCount', 'availableRoles'));
     }
-    }
 
     public function leaveParty(Request $request, $slug)
     {
