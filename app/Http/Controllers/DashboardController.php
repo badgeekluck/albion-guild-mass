@@ -12,25 +12,34 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $user = auth()->user();
-
-        $query = SharedLink::withCount('attendees')
-            ->with('creator')
-            ->orderBy('created_at', 'desc');
-
-        if (!in_array($user->role, ['admin', 'content-creator'])) {
-            $query->where('creator_id', $user->id);
-        }
-
-        $links = $query->get();
+        $templates = PartyTemplate::orderBy('name')->get();
 
         $staffMembers = User::whereIn('role', ['admin', 'content-creator'])
-            ->orderBy('role')
+            ->orderBy('name')
             ->get();
 
-        $templates = PartyTemplate::all();
+        $activeLinks = SharedLink::where('creator_id', auth()->id())
+            ->where('status', 'active')
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-        return view('dashboard', compact('links', 'staffMembers', 'templates'));
+        $archivedLinks = SharedLink::where('creator_id', auth()->id())
+            ->where('status', 'completed')
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+
+        return view('dashboard', compact('templates', 'staffMembers', 'activeLinks', 'archivedLinks'));
+    }
+
+    public function archiveLink($id)
+    {
+        $link = SharedLink::where('id', $id)->where('creator_id', auth()->id())->firstOrFail();
+
+        $link->status = 'completed';
+        $link->save();
+
+        return back()->with('success', 'Etkinlik tamamlandı ve arşive taşındı! 🏁');
     }
 
     public function createLink(Request $request)

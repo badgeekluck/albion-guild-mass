@@ -33,6 +33,8 @@ Route::middleware(['auth'])->group(function () {
         ->middleware(['auth'])
         ->name('attendance.index');
 
+    Route::post('/dashboard/archive/{id}', [DashboardController::class, 'archiveLink'])->name('dashboard.archive');
+
 });
 
 Route::middleware(['auth', AdminCheck::class])->group(function () {

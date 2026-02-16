@@ -103,55 +103,82 @@
         </form>
     </div>
 
-    <h3 style="border-bottom: 1px solid #374151; padding-bottom: 10px; margin-bottom: 20px; font-size: 18px; color: #fff;">Active Links</h3>
+    <h3 style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 30px;">
+        🟢 Active Events
+    </h3>
 
-    @if($links->count() > 0)
-        @foreach($links as $link)
-            @php
-                $templateCount = is_array($link->template_snapshot) ? count($link->template_snapshot) : 20;
-
-                $extraCount = $link->extra_slots ?? 0;
-
-                $totalSlots = $templateCount + $extraCount;
-
-                $filledSlots = $link->attendees_count ?? 0;
-            @endphp
-
-            <div class="link-card">
-                <div class="link-info">
-                    <h3>
+    @if($activeLinks->count() > 0)
+        @foreach($activeLinks as $link)
+            <div class="link-card" style="display:flex; justify-content:space-between; align-items:center; background:#1f2937; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #374151;">
+                <div>
+                    <div style="font-weight:bold; font-size:16px; color:white;">
                         {{ $link->title ?? 'Untitled Party' }}
-                        <span class="badge {{ $filledSlots > 0 ? 'badge-green' : 'badge-gray' }}">
-                            {{ $filledSlots }} / {{ $totalSlots }} Joined
-                        </span>
-                        Created By:<span style="font-size: 11px; background: #4338ca; color: #c7d2fe; border: 1px solid #6366f1; padding: 2px 8px; border-radius: 12px; margin-left: 10px; font-weight: normal; vertical-align: middle;">
-        👑                   {{ $link->creator->name ?? 'Unknown' }}
-                        </span>
-                    </h3>
-                    <div class="link-meta">
-                        <span title="{{ $link->created_at }}">📅 {{ $link->created_at->diffForHumans() }}</span>
-                        <span style="font-family: monospace; background: #111827; padding: 2px 6px; border-radius: 4px; color: #d1d5db;">Code: {{ $link->slug }}</span>
-                        <a href="{{ url('/go/' . $link->slug) }}" target="_blank" class="link-url">Open Party Page ↗</a>
+                    </div>
+                    <div style="font-size:12px; color:#9ca3af; margin-top:4px;">
+                        <span style="background:#374151; padding:2px 6px; border-radius:4px;">Code: {{ $link->slug }}</span>
+                        <span style="margin-left:10px;">📅 {{ $link->created_at->diffForHumans() }}</span>
+                        <span style="margin-left:10px; color:#6366f1;">👥 {{ $link->attendees->count() }} Joined</span>
                     </div>
                 </div>
 
-                <div class="actions">
-                    <button onclick="copyToClipboard('{{ url('/go/' . $link->slug) }}')" class="btn-icon">
-                        📋 Copy URL
+                <div style="display:flex; gap:10px;">
+                    <a href="{{ route('party.show', $link->slug) }}" target="_blank" class="btn-secondary" style="font-size:12px;">Open ↗</a>
+
+                    <button onclick="navigator.clipboard.writeText('{{ route('party.show', $link->slug) }}'); alert('Copied!');" class="btn-secondary" style="font-size:12px;">
+                        📋 Copy
                     </button>
 
-                    <form action="{{ route('dashboard.delete', $link->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this link?')">
+                    <form action="{{ route('dashboard.archive', $link->id) }}" method="POST" onsubmit="return confirm('Etkinliği bitirip arşive kaldırmak istiyor musun?');">
+                        @csrf
+                        <button type="submit" style="background:#f59e0b; color:black; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px;">
+                            🏁 Finish
+                        </button>
+                    </form>
+
+                    <form action="{{ route('dashboard.delete', $link->id) }}" method="POST" onsubmit="return confirm('DİKKAT: Bu işlem geri alınamaz! Silmek istediğine emin misin?');">
                         @csrf @method('DELETE')
-                        <button type="submit" class="btn-icon btn-delete">🗑 Delete</button>
+                        <button type="submit" style="background:#ef4444; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px;">
+                            🗑️ Delete
+                        </button>
                     </form>
                 </div>
             </div>
         @endforeach
     @else
-        <div style="text-align: center; padding: 50px; color: #6b7280; border: 2px dashed #374151; border-radius: 8px; background: #1f2937;">
-            <p style="font-size: 16px;">You haven't created any party links yet.</p>
-            <p style="font-size: 14px;">Use the form above to create your first party roster.</p>
+        <p style="color:#666; font-style:italic;">No active events running.</p>
+    @endif
+
+
+    <h3 style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 50px; color:#9ca3af;">
+        📂 Past Events (Archive)
+    </h3>
+
+    @if($archivedLinks->count() > 0)
+        <div style="opacity: 0.7;"> @foreach($archivedLinks as $link)
+                <div class="link-card" style="display:flex; justify-content:space-between; align-items:center; background:#18181b; padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid #27272a;">
+                    <div>
+                        <div style="font-weight:bold; font-size:14px; color:#d1d5db; text-decoration: line-through;">
+                            {{ $link->title ?? 'Untitled Party' }}
+                        </div>
+                        <div style="font-size:11px; color:#6b7280;">
+                            <span>Finished: {{ $link->updated_at->diffForHumans() }}</span>
+                            <span style="margin-left:10px;">Total: {{ $link->attendees->count() }} Players</span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px;">
+                        <a href="{{ route('party.show', $link->slug) }}" class="btn-secondary" style="font-size:11px; padding:5px 10px;">View Stats</a>
+
+                        <form action="{{ route('dashboard.delete', $link->id) }}" method="POST" onsubmit="return confirm('Arşivden tamamen silmek istediğine emin misin?');">
+                            @csrf @method('DELETE')
+                            <button type="submit" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:14px;">🗑️</button>
+                        </form>
+                    </div>
+                </div>
+            @endforeach
         </div>
+    @else
+        <p style="color:#444; font-size:12px;">Archive is empty.</p>
     @endif
 
 </div>
