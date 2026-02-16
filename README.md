@@ -1,59 +1,127 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+⚔️ Albion Online Party Manager
+A web-based roster management tool designed to replace spreadsheets for ZvZ parties. Features visual role selection, drag-and-drop management, automatic waitlists, and attendance tracking.
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+🔥 Key Features
+Visual Roster: Drag & Drop interface for managing party slots.
 
-## About Laravel
+Role Validation: Ensures players select valid weapons for specific roles (Tank, Heal, DPS, Support).
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Dynamic Slots: "Bomb Squad" or extra slots can be added instantly by callers.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Attendance System: Tracks player participation history and role preferences (Archived data supported).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Discord Integration: Secure login and authentication via Discord OAuth2.
 
-## Learning Laravel
+Waitlist Management: Auto-overflow system for players when the main party is full.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Staff Tools: Special dashboard for Admins and Callers to manage templates and rosters.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+🛠️ Tech Stack
+Framework: Laravel 12+ (PHP)
 
-## Laravel Sponsors
+Database: MySQL
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Frontend: Blade Templates, Vanilla JS (Drag & Drop), Custom CSS
 
-### Premium Partners
+Environment: Docker & Docker Compose
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+🚀 Getting Started (Local Development)
+Follow these steps to get the project running on your local machine.
 
-## Contributing
+Prerequisites
+Docker Desktop
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Git
 
-## Code of Conduct
+1. Clone the Repository
+   Bash
+   git clone https://github.com/badgeekluck/albion-party-manager.git
+   cd albion-party-manager
+2. Environment Setup
+   Copy the example environment file and configure it.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Bash
+cp .env.example .env
+Open .env and make sure your database and app settings are correct. Crucially, set up your Discord Developer credentials:
 
-## Security Vulnerabilities
+Ini, TOML
+APP_URL=http://localhost:8000
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+DB_CONNECTION=mysql
+DB_HOST=db
+DB_PORT=3306
+DB_DATABASE=albion_guild
+DB_USERNAME=root
+DB_PASSWORD=root
 
-## License
+# Discord OAuth2
+DISCORD_CLIENT_ID=your_client_id
+DISCORD_CLIENT_SECRET=your_client_secret
+DISCORD_REDIRECT_URI=http://localhost:8000/auth/discord/callback
+3. Build and Start Containers
+   Bash
+   docker-compose up -d --build
+4. Install Dependencies
+   Run these commands inside the container:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Bash
+# Install PHP dependencies
+docker-compose exec app composer install
+
+# Generate App Key
+docker-compose exec app php artisan key:generate
+5. Database Setup
+   Run migrations to create tables (Shared Links, Attendees, Roles, etc.).
+
+Bash
+docker-compose exec app php artisan migrate
+
+# (Optional) Seed the database with default roles/weapons
+docker-compose exec app php artisan db:seed
+6. Access the App
+   Open your browser and visit:
+
+http://localhost:8000
+📜 Common Commands
+Here are some useful commands for development:
+
+Clear Cache:
+
+Bash
+docker-compose exec app php artisan optimize:clear
+Create a new Migration:
+
+Bash
+docker-compose exec app php artisan make:migration create_new_table
+Access Database CLI:
+
+Bash
+docker-compose exec db mysql -u root -p
+📂 Project Structure
+app/Models: Database models (SharedLink, LinkAttendee, etc.).
+
+app/Http/Controllers: Logic for Dashboard, Attendance, and Party management.
+
+resources/views: Blade templates (party-screen.blade.php, dashboard.blade.php).
+
+routes/web.php: All application routes.
+
+🛡️ Role & Permission System
+Admin: Full access to dashboard, templates, and staff list.
+
+Content Creator: Can create links and manage their own parties.
+
+Member: Can only join parties via shared links.
+
+Note: Roles are managed via the users table in the database.
+
+🤝 Contributing
+Fork the repository.
+
+Create a new feature branch (git checkout -b feature/amazing-feature).
+
+Commit your changes (git commit -m 'Add amazing feature').
+
+Push to the branch (git push origin feature/amazing-feature).
+
+Open a Pull Request.
