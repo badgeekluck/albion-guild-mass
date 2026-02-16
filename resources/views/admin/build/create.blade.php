@@ -58,21 +58,6 @@
         </div>
 
         <hr style="border: 0; border-top: 1px solid #374151; margin-bottom: 25px;">
-
-        <div class="grid-equip">
-            <div></div> <div>
-                <label>Head Slot</label>
-                <select name="head_id">
-                    <option value="">-- None --</option>
-                    @foreach($helmets->groupBy('category') as $category => $items)
-                        <optgroup label="{{ $category }}"> @foreach($items as $item)
-                                <option value="{{ $item->id }}">{{ $item->name }}</option>
-                            @endforeach
-                        </optgroup>
-                    @endforeach
-                </select>
-            </div>
-            <div></div> </div>
         <div class="grid-equip">
             <div></div> <div>
                 <label>Head Slot</label>
