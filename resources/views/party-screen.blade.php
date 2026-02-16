@@ -213,12 +213,17 @@
         .btn-join { width: 100%; padding: 12px; background: #6366f1; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-join:hover { background: #4f46e5; }
 
+         @media (max-width:1600px) {
+              .roster-area{overflow-y: auto; max-width: 1115px;}
+         }
+
+        
         @media (max-width: 767px) {
              .sidebar{width:100%; order:1;}
-             .roster-area{order:2}
+             .roster-area{order:2;}
              .main-container {flex-wrap:wrap;}
         }
-
+    
 
         /* Header */
         .header-wrapper{max-width: 1600px; margin: 0 auto 20px auto; background: #25252e; padding: 15px; border-radius: 8px; border: 1px solid #333; display: flex; gap: 30px; align-items: center; color: #ccc;}
@@ -275,7 +280,7 @@
             </div>
         </div>
     </div>
-    <div class="header-item">
+    <div class="header-item" style="margin-left:auto;">
         <div class="header-icon" style="background: #10b981;">👁️</div>
         <div>
             <div style="font-size: 11px; text-transform: uppercase; font-weight: bold;">Live Viewers</div>
