@@ -115,26 +115,27 @@ class LinkController extends Controller
 
 
         $rolesInTemplate = collect($link->template_snapshot ?? [])
+            ->pluck('role')
+            ->flatten()
             ->filter(function ($roleName) {
-
                 return !empty($roleName)
+                    && is_string($roleName) // Sadece yazıları al
                     && !in_array($roleName, ['Empty Slot', 'Any', 'Flex', 'Caller', 'Bomb Squad / Flex']);
             })
             ->unique()
-            ->values();
+            ->values()
+            ->toArray();
 
 
-        if ($rolesInTemplate->isNotEmpty()) {
+        if (!empty($rolesInTemplate)) {
             $availableRoles = GameRole::whereIn('name', $rolesInTemplate)
                 ->orderBy('name', 'asc')
                 ->get();
-
 
             if ($availableRoles->isEmpty()) {
                 $availableRoles = GameRole::whereIn('category', ['Tank', 'Healer', 'DPS', 'Support'])
                     ->orderBy('name', 'asc')->get();
             }
-
         } else {
             $availableRoles = GameRole::whereIn('category', ['Tank', 'Healer', 'DPS', 'Support'])
                 ->orderBy('name', 'asc')
@@ -142,6 +143,7 @@ class LinkController extends Controller
         }
 
         return view('party-screen', compact('link', 'viewerCount', 'availableRoles'));
+    }
     }
 
     public function leaveParty(Request $request, $slug)
