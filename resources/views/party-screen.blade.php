@@ -451,7 +451,7 @@
                     <div class="waitlist-item {{ $isAdmin ? 'draggable-enabled' : '' }}"
                          draggable="{{ $isAdmin ? 'true' : 'false' }}"
                          ondragstart="drag(event, {{ $att->id }})"
-                         style="{{ !$isAdmin ? 'pointer-events: none;' : '' }}">>
+                         style="{{ !$isAdmin ? 'pointer-events: none;' : '' }}">
 
                         <div style="font-weight: bold; color: #fff; font-size: 13px;">
                             {{ $att->in_game_name ?? $att->user->name }}
