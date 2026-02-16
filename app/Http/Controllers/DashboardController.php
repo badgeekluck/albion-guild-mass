@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PartyTemplate;
+use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\SharedLink;
 use Illuminate\Support\Str;
@@ -11,13 +12,15 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $templates = PartyTemplate::all();
         $links = SharedLink::where('creator_id', auth()->id())
-            ->withCount('attendees')
             ->orderBy('created_at', 'desc')
             ->get();
-
-        return view('dashboard', compact('links','templates'));
+        $staffMembers = User::whereIn('role', ['admin', 'content-creator'])
+            ->orderBy('role')
+            ->get();
+        $templates = PartyTemplate::all();
+        
+        return view('dashboard', compact('links', 'staffMembers', 'templates'));
     }
 
     public function createLink(Request $request)
