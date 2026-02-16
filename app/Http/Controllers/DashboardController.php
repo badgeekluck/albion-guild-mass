@@ -15,6 +15,7 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         $query = SharedLink::withCount('attendees')
+            ->with('creator')
             ->orderBy('created_at', 'desc');
 
         if (!in_array($user->role, ['admin', 'content-creator'])) {

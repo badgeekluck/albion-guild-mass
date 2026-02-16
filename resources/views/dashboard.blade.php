@@ -98,7 +98,7 @@
         </form>
     </div>
 
-    <h3 style="border-bottom: 1px solid #374151; padding-bottom: 10px; margin-bottom: 20px; font-size: 18px; color: #fff;">Your Active Links</h3>
+    <h3 style="border-bottom: 1px solid #374151; padding-bottom: 10px; margin-bottom: 20px; font-size: 18px; color: #fff;">Active Links</h3>
 
     @if($links->count() > 0)
         @foreach($links as $link)
@@ -118,6 +118,9 @@
                         {{ $link->title ?? 'Untitled Party' }}
                         <span class="badge {{ $filledSlots > 0 ? 'badge-green' : 'badge-gray' }}">
                             {{ $filledSlots }} / {{ $totalSlots }} Joined
+                        </span>
+                        Created By:<span style="font-size: 11px; background: #4338ca; color: #c7d2fe; border: 1px solid #6366f1; padding: 2px 8px; border-radius: 12px; margin-left: 10px; font-weight: normal; vertical-align: middle;">
+        👑                   {{ $link->creator->name ?? 'Unknown' }}
                         </span>
                     </h3>
                     <div class="link-meta">
