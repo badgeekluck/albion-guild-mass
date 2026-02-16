@@ -14,7 +14,6 @@
             width: 98%;
             margin: 0 auto;
             align-items: flex-start;
-            height: calc(100vh - 120px);
             overflow: hidden;
         }
 
@@ -217,13 +216,13 @@
               .roster-area{overflow-y: auto; max-width: 1115px;}
          }
 
-        
+
         @media (max-width: 767px) {
              .sidebar{width:100%; order:1;}
              .roster-area{order:2;}
              .main-container {flex-wrap:wrap;}
         }
-    
+
 
         /* Header */
         .header-wrapper{max-width: 1600px; margin: 0 auto 20px auto; background: #25252e; padding: 15px; border-radius: 8px; border: 1px solid #333; display: flex; gap: 30px; align-items: center; color: #ccc;}
@@ -232,7 +231,7 @@
         .header-wrapper .header-login{margin-left: 20px; padding-left: 20px; border-left: 1px solid #444;}
 
         .header-wrapper .header-icon{padding: 8px; border-radius: 6px;}
-        
+
         @media (max-width: 767px) {
             .header-wrapper{gap:10px; flex-wrap:wrap;}
             .header-wrapper .header-login,
@@ -240,7 +239,7 @@
             .header-wrapper .header-icon{padding:4px; font-size:12px;}
         }
 
-        
+
     </style>
 </head>
 <body>
