@@ -60,10 +60,8 @@ class LinkController extends Controller
 
     public function showParty($slug)
     {
-        // 1. Linki ve ilişkilerini çek
         $link = SharedLink::with(['attendees', 'creator'])->where('slug', $slug)->firstOrFail();
 
-        // 2. --- BUILD DATA ENJEKSİYONU (DÜZELTİLDİ: KEY KORUMA) ---
         $snapshot = $link->template_snapshot ?? [];
 
         // Build ID'lerini topla
@@ -105,7 +103,6 @@ class LinkController extends Controller
         }
         // ----------------------------------------
 
-        // 3. Canlı İzleyici Sayısı
         $key = 'party_viewers_' . $slug;
         $viewers = Cache::get($key, []);
         $identifier = auth()->check() ? 'user_'.auth()->id() : 'ip_'.request()->ip();
@@ -116,10 +113,30 @@ class LinkController extends Controller
         Cache::put($key, $viewers, 300);
         $viewerCount = count($viewers);
 
-        // 4. Dropdown Roller
-        $availableRoles = GameRole::whereIn('category', ['Tank', 'Healer', 'DPS', 'Support'])
-            ->orderBy('name', 'asc')
-            ->get();
+        $rolesInTemplate = collect($snapshot)
+            ->pluck('role')
+            ->filter(function ($roleName) {
+                return !empty($roleName)
+                    && !in_array($roleName, ['Empty Slot', 'Any', 'Flex', 'Caller', 'Bomb Squad / Flex']);
+            })
+            ->unique()
+            ->values();
+
+        if ($rolesInTemplate->isNotEmpty()) {
+            $availableRoles = GameRole::whereIn('name', $rolesInTemplate)
+                ->orderBy('name', 'asc')
+                ->get();
+
+            if ($availableRoles->isEmpty()) {
+                $availableRoles = GameRole::whereIn('category', ['Tank', 'Healer', 'DPS', 'Support'])
+                    ->orderBy('name', 'asc')->get();
+            }
+
+        } else {
+            $availableRoles = GameRole::whereIn('category', ['Tank', 'Healer', 'DPS', 'Support'])
+                ->orderBy('name', 'asc')
+                ->get();
+        }
 
         return view('party-screen', compact('link', 'viewerCount', 'availableRoles'));
     }

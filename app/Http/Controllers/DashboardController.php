@@ -65,7 +65,7 @@ class DashboardController extends Controller
         if (auth()->user()->role !== 'admin' && auth()->id() !== $link->creator_id) {
             abort(403, 'Bu linki silme yetkiniz yok.');
         }
-        
+
         $link->delete();
 
         return back()->with('success', 'Link başarıyla silindi.');
