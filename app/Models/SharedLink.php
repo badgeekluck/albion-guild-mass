@@ -19,7 +19,7 @@ class SharedLink extends Model
     ];
 
     protected $fillable = [
-        'creator_id', 'slug', 'destination_url', 'expires_at', 'title', 'template_snapshot','title',
+        'creator_id', 'slug', 'destination_url', 'expires_at', 'title', 'template_snapshot','title','type',
     ];
 
     protected static function boot()
