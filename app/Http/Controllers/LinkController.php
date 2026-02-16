@@ -87,6 +87,27 @@ class LinkController extends Controller
         return view('party-screen', compact('link', 'viewerCount', 'availableRoles'));
     }
 
+    public function updateExtraSlots(Request $request, $slug)
+    {
+        $link = SharedLink::where('slug', $slug)->firstOrFail();
+
+        if (auth()->user()->role !== 'admin' && auth()->id() !== $link->creator_id) {
+            return back()->with('error', 'Bu işlem için yetkiniz yok.');
+        }
+
+        $action = $request->input('action');
+
+        if ($action == 'add') {
+            $link->increment('extra_slots', 1);
+        } elseif ($action == 'remove') {
+            if ($link->extra_slots > 0) {
+                $link->decrement('extra_slots', 1);
+            }
+        }
+
+        return back()->with('success', 'Kapasite güncellendi!');
+    }
+
     public function joinParty(Request $request, $slug)
     {
         $link = SharedLink::where('slug', $slug)->firstOrFail();

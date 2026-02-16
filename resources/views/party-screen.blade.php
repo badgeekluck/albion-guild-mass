@@ -225,7 +225,12 @@
         in_array(auth()->user()->role, ['admin', 'content-creator'])
     );
 
-    $maxSlots = is_array($link->template_snapshot) ? count($link->template_snapshot) : 20;
+    $templateSlots = is_array($link->template_snapshot) ? count($link->template_snapshot) : 20;
+
+    $extraSlots = $link->extra_slots ?? 0;
+
+    $maxSlots = $templateSlots + $extraSlots;
+
     $partyCount = ceil($maxSlots / 20);
 @endphp
 
@@ -283,129 +288,148 @@
 
     <div class="roster-area">
         <h2 style="margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 20px;">
-            Party Composition <span style="font-size: 14px; color: #888; font-weight: normal;">({{ $maxSlots }} Slots)</span>
+            Party Composition
+            <span style="font-size: 14px; color: #6366f1; font-weight: bold; margin-left: 10px; text-transform: uppercase;">
+        @if($link->title)
+                    — {{ $link->title }}
+                @else
+                    — Standard Setup
+                @endif
+    </span>
+            <span style="font-size: 14px; color: #888; font-weight: normal;">({{ $maxSlots }} Slots)</span>
         </h2>
+        @if(auth()->check() && (auth()->user()->role === 'admin' || auth()->id() === $link->creator_id))
+            <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; width: fit-content;">
+                <span style="color: #fbbf24; font-weight: bold; font-size: 13px;">💣 BOMB SQUAD / EXTRA:</span>
+
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <form action="{{ route('party.slots', $link->slug) }}" method="POST" style="margin:0;">
+                        @csrf <input type="hidden" name="action" value="remove">
+                        <button type="submit" style="background: #ef4444; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
+                    </form>
+
+                    <span style="color: white; font-weight: bold; font-size: 16px; min-width: 30px; text-align: center;">{{ $extraSlots }}</span>
+
+                    <form action="{{ route('party.slots', $link->slug) }}" method="POST" style="margin:0;">
+                        @csrf <input type="hidden" name="action" value="add">
+                        <button type="submit" style="background: #22c55e; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+                    </form>
+                </div>
+            </div>
+        @endif
 
         <div class="parties-grid">
             @for ($p = 0; $p < $partyCount; $p++)
                 <div class="party-column">
                     <div class="party-header">Party {{ $p + 1 }}</div>
-                    
+
                     <div class="slots-container">
                     @php
                         $start = ($p * 20) + 1;
                         $end = min(($p * 20) + 20, $maxSlots);
                     @endphp
 
-                    @for ($i = $start; $i <= $end; $i++)
-                        @php
-                            $attendee = $link->attendees->where('slot_index', $i)->first();
+                        @for ($i = $start; $i <= $end; $i++)
+                            @php
+                                $attendee = $link->attendees->where('slot_index', $i)->first();
+                                $isItMe = $attendee && auth()->check() && $attendee->user_id == auth()->id();
 
-                            $isItMe = $attendee && auth()->check() && $attendee->user_id == auth()->id();
+                                // --- YENİ MANTIK BAŞLANGIÇ ---
 
-                            // 1. Template Bilgilerini Al
-                            $templateData = $link->template_snapshot[$i] ?? [];
-                            $templateType = $templateData['type'] ?? 'any';
-                            $templateRole = $templateData['role'] ?? 'Any'; // Silah İsmi
-                            $templateNote = $templateData['note'] ?? '';    // Build Notu (Örn: Judi Helmet)
+                                // Bu slot ekstra mı?
+                                $isExtraSlot = $i > $templateSlots;
 
-                            // 2. Renk Sınıfı
-                            $slotClass = 'role-any';
-                            if($templateType == 'tank') $slotClass = 'role-tank';
-                            elseif($templateType == 'heal') $slotClass = 'role-heal';
-                            elseif($templateType == 'dps') $slotClass = 'role-dps';
-                            elseif($templateType == 'supp') $slotClass = 'role-supp';
+                                if (!$isExtraSlot) {
+                                    // NORMAL SLOT (Şablondan gelen)
+                                    // Not: Dizi indexi 0'dan başlar, slot 1'den. O yüzden $i-1 kullanmak daha güvenlidir,
+                                    // ama senin kodunda $i kullanılmış. Eğer kayma olursa burayı $i-1 yap.
+                                    $templateData = $link->template_snapshot[$i] ?? ($link->template_snapshot[$i-1] ?? []);
 
-                            if($isItMe) $slotClass .= ' my-own-slot';
-                        @endphp
+                                    $templateType = $templateData['type'] ?? 'any';
+                                    $templateRole = $templateData['role'] ?? 'Any';
+                                    $templateNote = $templateData['note'] ?? '';
+                                } else {
+                                    // EKSTRA SLOT (Bomb Squad)
+                                    $templateType = 'dps'; // Varsayılan renk (Kırmızı)
+                                    $templateRole = 'Bomb Squad / Flex'; // Görünen isim
+                                    $templateNote = 'Flexible Slot';
+                                }
 
-                        <div class="party-slot {{ $slotClass }}"
-                             ondragover="allowDrop(event)"
-                             ondragleave="leaveDrop(event)"
-                             ondrop="drop(event, {{ $i }})">
+                                // Renk Sınıfı
+                                $slotClass = 'role-any';
+                                if($templateType == 'tank') $slotClass = 'role-tank';
+                                elseif($templateType == 'heal') $slotClass = 'role-heal';
+                                elseif($templateType == 'dps') $slotClass = 'role-dps';
+                                elseif($templateType == 'supp') $slotClass = 'role-supp';
 
-                            <div class="slot-number">{{ $i }}</div>
+                                if($isItMe) $slotClass .= ' my-own-slot';
 
-                            <div style="flex-grow: 1; display: flex; align-items: center;">
-                                @if($attendee)
-                                    @if($isItMe)
-                                        <span class="you-badge">YOU</span>
-                                    @endif
+                                // --- YENİ MANTIK BİTİŞ ---
+                            @endphp
 
-                                    <div class="player-card" ...>
-                                    </div>
-                                @else
-                                @endif
-                            </div>
+                            <div class="party-slot {{ $slotClass }}"
+                                 ondragover="allowDrop(event)"
+                                 ondragleave="leaveDrop(event)"
+                                 ondrop="drop(event, {{ $i }})">
 
-                            <div style="flex-grow: 1; overflow: hidden; display: flex; align-items: center;">
-                                @if($attendee)
-                                    <div class="player-card"
-                                         draggable="{{ $isAdmin ? 'true' : 'false' }}"
-                                         ondragstart="drag(event, {{ $attendee->id }})">
+                                <div class="slot-number">{{ $i }}</div>
 
-                                        <div class="slot-user" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.1; margin-right: 5px; overflow: hidden;">
+                                <div style="flex-grow: 1; display: flex; align-items: center;">
+                                    @if($attendee)
+                                        @if($isItMe) <span class="you-badge">YOU</span> @endif
+
+                                        <div class="player-card"
+                                             draggable="{{ $isAdmin ? 'true' : 'false' }}"
+                                             ondragstart="drag(event, {{ $attendee->id }})">
+
+                                            <div class="slot-user" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.1; margin-right: 5px; overflow: hidden;">
                                             <span style="font-weight: bold; color: #fff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                 {{ $attendee->in_game_name ?? $attendee->user->name }}
                                             </span>
+                                                @if($attendee->in_game_name && $attendee->in_game_name !== $attendee->user->name)
+                                                    <span style="font-size: 10px; color: #888;">(DC: {{ $attendee->user->name }})</span>
+                                                @endif
+                                            </div>
 
-                                            @if($attendee->in_game_name && $attendee->in_game_name !== $attendee->user->name)
-                                                <span style="font-size: 10px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                    (DC: {{ $attendee->user->name }})
-                                                </span>
+                                            @php
+                                                $isMySlot = auth()->id() == $attendee->user_id;
+                                                $hasFillRole = in_array('Fill', [$attendee->main_role, $attendee->second_role, $attendee->third_role, $attendee->fourth_role]);
+
+                                                // UYARI GÜNCELLEMESİ:
+                                                // Eğer $isExtraSlot ise (Bomb Squad), uyarı verme! (&& !$isExtraSlot eklendi)
+                                                $shouldSeeWarning = !$isExtraSlot && $attendee->is_forced && !$hasFillRole && ($isAdmin || $isMySlot);
+                                            @endphp
+
+                                            @if($shouldSeeWarning)
+                                                <div class="slot-role role-warning" title="Role mismatch!">
+                                                    <span class="warning-icon">⚠️</span> {{ $attendee->assigned_role }}
+                                                </div>
+                                            @else
+                                                <div class="slot-role">{{ $attendee->assigned_role ?? $attendee->main_role }}</div>
                                             @endif
                                         </div>
+                                    @else
+                                        @php $isEmpty = ($templateRole === 'Any' || $templateRole === 'Bomb Squad / Flex'); @endphp
 
-                                        @php
-                                            $isMySlot = auth()->id() == $attendee->user_id;
-
-                                            // Kullanıcının seçtiği roller arasında 'Fill' var mı kontrol et
-                                            $hasFillRole = in_array('Fill', [
-                                                $attendee->main_role,
-                                                $attendee->second_role,
-                                                $attendee->third_role,
-                                                $attendee->fourth_role
-                                            ]);
-
-                                            // UYARI ŞARTI:
-                                            // 1. Caller rolü zorlamış olmalı ($attendee->is_forced)
-                                            // 2. Kullanıcının rollerinden HİÇBİRİ 'Fill' OLMAMALI (!hasFillRole)
-                                            // 3. Gören kişi Admin veya Slot sahibi olmalı
-                                            $shouldSeeWarning = $attendee->is_forced && !$hasFillRole && ($isAdmin || $isMySlot);
-                                        @endphp
-
-                                        @if($shouldSeeWarning)
-                                            <div class="slot-role role-warning" title="Role mismatch!">
-                                                <span class="warning-icon">⚠️</span>
-                                                {{ $attendee->assigned_role }}
-                                            </div>
-                                        @else
-                                            <div class="slot-role">{{ $attendee->assigned_role ?? $attendee->main_role }}</div>
-                                        @endif
-                                    </div>
-                                @else
-                                    @php $isEmpty = $templateRole === 'Any'; @endphp
-
-                                    <div class="slot-user" style="color: #ccc; display: flex; flex-direction: column; justify-content: center;">
-                                        @if(!$isEmpty)
-                                            <span style="color: #fff; font-weight: 800; font-size: 11px; letter-spacing: 0.5px;">
+                                        <div class="slot-user" style="color: #ccc; display: flex; flex-direction: column; justify-content: center;">
+                                            @if(!$isEmpty && !$isExtraSlot)
+                                                <span style="color: #fff; font-weight: 800; font-size: 11px; letter-spacing: 0.5px;">
                                                 {{ strtoupper($templateRole) }}
                                             </span>
-                                        @else
-                                            <span style="font-size: 12px; opacity: 0.5; font-style:italic;">Empty Slot</span>
-                                        @endif
-                                    </div>
+                                            @else
+                                                <span style="font-size: 12px; opacity: 0.5; font-style:italic;">
+                                                {{ $isExtraSlot ? 'Bomb Squad / Flex' : 'Empty Slot' }}
+                                            </span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+
+                                @if($templateNote)
+                                    <div class="slot-note-fixed" title="{{ $templateNote }}">{{ $templateNote }}</div>
                                 @endif
                             </div>
-
-                            @if($templateNote)
-                                <div class="slot-note-fixed" title="{{ $templateNote }}">
-                                    {{ $templateNote }}
-                                </div>
-                            @endif
-
-                        </div>
-                    @endfor
+                        @endfor
                     </div>
                 </div>
             @endfor
