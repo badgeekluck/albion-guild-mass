@@ -64,8 +64,9 @@ class LinkController extends Controller
 
         $snapshot = $link->template_snapshot ?? [];
 
-        // Build ID'lerini topla
         $buildIds = collect($snapshot)->pluck('build_id')->filter()->unique();
+
+        $resolvedWeaponNames = [];
 
         if ($buildIds->isNotEmpty()) {
             $builds = SavedBuild::with(['head', 'armor', 'shoe', 'weapon', 'offhand', 'cape', 'food', 'potion'])
@@ -78,6 +79,10 @@ class LinkController extends Controller
             foreach($snapshot as $key => $slot) {
                 if (isset($slot['build_id']) && isset($builds[$slot['build_id']])) {
                     $b = $builds[$slot['build_id']];
+
+                    if ($b->weapon) {
+                        $resolvedWeaponNames[] = $b->weapon->name;
+                    }
 
                     $slot['build'] = [
                         'name' => $b->name,
@@ -95,13 +100,17 @@ class LinkController extends Controller
                     if(empty($slot['role']) || $slot['role'] == 'Any') {
                         $slot['role'] = $b->name;
                     }
+                } elseif (!empty($slot['role'])) {
+                    $resolvedWeaponNames[] = $slot['role'];
                 }
+
                 $enrichedSnapshot[$key] = $slot;
             }
 
             $link->template_snapshot = $enrichedSnapshot;
+        } else {
+            $resolvedWeaponNames = collect($snapshot)->pluck('role')->toArray();
         }
-        // ----------------------------------------
 
         $key = 'party_viewers_' . $slug;
         $viewers = Cache::get($key, []);
@@ -113,22 +122,19 @@ class LinkController extends Controller
         Cache::put($key, $viewers, 300);
         $viewerCount = count($viewers);
 
-
-        $rolesInTemplate = collect($link->template_snapshot ?? [])
-            ->pluck('role')
+        $finalRoleList = collect($resolvedWeaponNames)
             ->flatten()
             ->filter(function ($roleName) {
                 return !empty($roleName)
-                    && is_string($roleName) // Sadece yazıları al
+                    && is_string($roleName)
                     && !in_array($roleName, ['Empty Slot', 'Any', 'Flex', 'Caller', 'Bomb Squad / Flex']);
             })
             ->unique()
             ->values()
             ->toArray();
 
-
-        if (!empty($rolesInTemplate)) {
-            $availableRoles = GameRole::whereIn('name', $rolesInTemplate)
+        if (!empty($finalRoleList)) {
+            $availableRoles = GameRole::whereIn('name', $finalRoleList)
                 ->orderBy('name', 'asc')
                 ->get();
 
