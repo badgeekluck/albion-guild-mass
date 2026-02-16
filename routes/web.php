@@ -22,6 +22,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/go/{slug}', [LinkController::class, 'showParty'])->name('party.show');
     Route::post('/go/{slug}/join', [LinkController::class, 'joinParty'])->name('party.join');
+    Route::post('/go/{slug}/leave', [LinkController::class, 'leaveParty'])->name('party.leave');
     Route::post('/go/{slug}/move', [LinkController::class, 'moveMember'])->name('party.move');
 
     Route::post('/go/{slug}/slots', [LinkController::class, 'updateExtraSlots'])

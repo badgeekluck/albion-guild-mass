@@ -433,10 +433,6 @@
                                     $templateType = $templateData['type'] ?? 'any';
                                     $templateRole = $templateData['role'] ?? 'Any';
                                     $templateNote = $templateData['note'] ?? '';
-
-                                    // BUILD DATA (Saved Build Bilgisi Varsa)
-                                    // Burada varsayıyoruz ki template_snapshot içinde 'build' objesi de var.
-                                    // Eğer yoksa boş geçecek.
                                     $buildData = $templateData['build'] ?? null;
                                 } else {
                                     $templateType = 'dps';
@@ -525,7 +521,30 @@
     </div>
 
     <div class="sidebar">
-        <button class="btn-join" onclick="document.getElementById('joinModal').style.display='block'">Join Party</button>
+        @auth
+            @php
+                $myAttendance = $link->attendees->where('user_id', auth()->id())->first();
+            @endphp
+
+            @if($myAttendance)
+                <form action="{{ route('party.leave', $link->slug) }}" method="POST" onsubmit="return confirm('Partiden ayrılmak istediğine emin misin?');">
+                    @csrf
+                    <button type="submit" class="btn-join" style="background-color: #ef4444; border: 1px solid #dc2626; color: white;">
+                        🚪 Leave Party
+                    </button>
+                </form>
+
+                <div style="text-align: center; margin-top: 8px; font-size: 11px; color: #888;">
+                    Kayıtlı Rol: <strong style="color:#fbbf24;">{{ $myAttendance->main_role }}</strong>
+                </div>
+            @else
+                <button class="btn-join" onclick="document.getElementById('joinModal').style.display='block'">Join Party</button>
+            @endif
+        @else
+            <a href="{{ route('login') }}" class="btn-join" style="text-decoration:none; display:block; text-align:center; line-height:40px; background-color: #5865F2;">
+                Login to Join
+            </a>
+        @endauth
 
         <h4 style="margin-top: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; font-size: 14px;">
             Registered Members (Waitlist)

@@ -117,9 +117,25 @@ class LinkController extends Controller
         $viewerCount = count($viewers);
 
         // 4. Dropdown Roller
-        $availableRoles = GameRole::orderBy('name', 'asc')->get();
+        $availableRoles = GameRole::whereIn('category', ['Tank', 'Healer', 'DPS', 'Support'])
+            ->orderBy('name', 'asc')
+            ->get();
 
         return view('party-screen', compact('link', 'viewerCount', 'availableRoles'));
+    }
+
+    public function leaveParty(Request $request, $slug)
+    {
+        $link = SharedLink::where('slug', $slug)->firstOrFail();
+
+        $attendee = $link->attendees()->where('user_id', auth()->id())->first();
+
+        if ($attendee) {
+            $attendee->delete();
+            return back()->with('success', 'Partiden ayrıldınız.');
+        }
+
+        return back()->with('error', 'Zaten partide değilsiniz.');
     }
 
     public function updateExtraSlots(Request $request, $slug)
