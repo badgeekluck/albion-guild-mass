@@ -13,10 +13,10 @@ class LinkAttendee extends Model
 
     public function link()
     {
-        return $this->belongsTo(SharedLink::class, 'link_id');
+        return $this->belongsTo(SharedLink::class, 'shared_link_id');
     }
     // ----------------------------------
-    
+
     public function user()
     {
         return $this->belongsTo(User::class);
