@@ -148,7 +148,7 @@
         .slot-number { font-weight: bold; color: rgba(255,255,255,0.6); width: 25px; font-size: 12px; }
 
         /* Draggable Card */
-        .player-card { display: flex; align-items: center; flex-grow: 1; height: 100%; cursor: grab; }
+        .player-card { display: flex; align-items: center; flex-grow: 1; height: 100%; }
         .player-card:active { cursor: grabbing; }
         .player-card.is-dragging { opacity: 0.5; }
 
@@ -174,8 +174,10 @@
         }
         .waitlist-item {
             background: #383844; padding: 8px; margin-bottom: 6px; border-radius: 4px;
-            cursor: grab; display: flex; flex-direction: column; gap: 4px;
+            display: flex; flex-direction: column; gap: 4px;
         }
+        .draggable-enabled { cursor: grab; }
+        .draggable-enabled:active { cursor: grabbing; }
         .waitlist-area {
             flex-grow: 1;
             overflow-y: auto;
@@ -376,9 +378,9 @@
                                     @if($attendee)
                                         @if($isItMe) <span class="you-badge">YOU</span> @endif
 
-                                        <div class="player-card"
-                                             draggable="{{ $isAdmin ? 'true' : 'false' }}"
-                                             ondragstart="drag(event, {{ $attendee->id }})">
+                                            <div class="player-card {{ $isAdmin ? 'draggable-enabled' : '' }}"
+                                                 draggable="{{ $isAdmin ? 'true' : 'false' }}"
+                                                 ondragstart="drag(event, {{ $attendee->id }})">
 
                                             <div class="slot-user" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.1; margin-right: 5px; overflow: hidden;">
                                             <span style="font-weight: bold; color: #fff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -446,9 +448,10 @@
 
             @foreach($link->attendees as $att)
                 @if(is_null($att->slot_index))
-                    <div class="waitlist-item"
+                    <div class="waitlist-item {{ $isAdmin ? 'draggable-enabled' : '' }}"
                          draggable="{{ $isAdmin ? 'true' : 'false' }}"
-                         ondragstart="drag(event, {{ $att->id }})">
+                         ondragstart="drag(event, {{ $att->id }})"
+                         style="{{ !$isAdmin ? 'pointer-events: none;' : '' }}">>
 
                         <div style="font-weight: bold; color: #fff; font-size: 13px;">
                             {{ $att->in_game_name ?? $att->user->name }}
@@ -534,6 +537,11 @@
 
 <script>
     function drag(ev, attendeeId) {
+        if (ev.target.getAttribute('draggable') !== 'true') {
+            ev.preventDefault();
+            return false;
+        }
+
         ev.dataTransfer.setData("attendeeId", attendeeId);
         ev.target.classList.add('is-dragging');
     }
