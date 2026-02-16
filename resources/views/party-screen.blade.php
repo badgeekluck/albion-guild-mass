@@ -277,9 +277,16 @@
 
         /* Grid Yerleşimi (Albion Envanteri) */
         #eq-head { grid-column: 2; grid-row: 1; }
-        #eq-cape { grid-column: 1; grid-row: 2; }
+        #eq-cape {
+            grid-column: 3;
+            grid-row: 1;
+        }
         #eq-armor { grid-column: 2; grid-row: 2; }
-        #eq-weapon { grid-column: 1; grid-row: 2; /* Silah için özel yerleşim */ transform: translateX(-90px); }
+        #eq-weapon {
+            grid-column: 1;
+            grid-row: 2;
+            /* transform: translateX(-90px); */
+        }
         #eq-offhand { grid-column: 3; grid-row: 2; }
         #eq-shoe { grid-column: 2; grid-row: 3; }
         /* Weapon'ı soldaki boşluğa manuel çekiyoruz çünkü grid tam oturmayabilir */
