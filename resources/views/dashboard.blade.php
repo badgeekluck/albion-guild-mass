@@ -24,6 +24,7 @@
         .btn-create:hover { background: #4f46e5; }
         .btn-manage { background: #4b5563; padding: 8px 12px; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; }
         .btn-manage:hover { background: #374151; }
+        .btn-secondary { cursor: pointer; padding: 8px 12px; border-radius: 4px; font-size: 13px; border: 1px solid transparent; }
 
         .link-card { background: #1f2937; padding: 20px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s; border: 1px solid #374151; }
         .link-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-color: #4b5563; }
@@ -59,8 +60,13 @@
             </div>
             <div style="margin-top: 10px;">
                 <a href="{{ route('templates.index') }}" class="btn-manage">⚙️ Manage Templates</a>
+                <button onclick="document.getElementById('staffModal').style.display='block'"
+                        class="btn-secondary"
+                        style="margin-right: 10px; background: #4f46e5; border-color: #4f46e5; color: white;">
+                    🛡️ Staff List
+                </button>
                 <a href="{{ route('logout') }}"
-                   style="background: #ef4444; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: bold;">
+                   style="background: #ef4444; color: white; text-decoration: none; padding: 8px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; display:inline-block;">
                     🚪 Logout
                 </a>
             </div>
@@ -92,11 +98,8 @@
     @if($links->count() > 0)
         @foreach($links as $link)
             @php
-
                 $totalSlots = is_array($link->template_snapshot) ? count($link->template_snapshot) : 20;
                 $filledSlots = $link->attendees_count;
-
-                $percent = $totalSlots > 0 ? round(($filledSlots / $totalSlots) * 100) : 0;
             @endphp
 
             <div class="link-card">
@@ -115,8 +118,7 @@
                 </div>
 
                 <div class="actions">
-                    <button onclick="copyToClipboard('{{ url('/go/' . $link->slug) }}')"
-                            style="">
+                    <button onclick="copyToClipboard('{{ url('/go/' . $link->slug) }}')" class="btn-icon">
                         📋 Copy URL
                     </button>
 
@@ -136,21 +138,71 @@
 
 </div>
 
+<div id="staffModal" class="modal" onclick="if(event.target==this)this.style.display='none'">
+    <div class="modal-content">
+        <span class="close-btn" onclick="document.getElementById('staffModal').style.display='none'">&times;</span>
+
+        <h2 style="border-bottom: 1px solid #374151; padding-bottom: 10px; margin-top: 0; color: white;">
+            🛡️ Authorized Staff
+        </h2>
+
+        <div class="staff-list">
+            @foreach($staffMembers as $staff)
+                <div class="staff-item">
+                    <div>
+                        <div style="font-weight: bold; color: white; font-size: 15px;">
+                            {{ $staff->name }}
+                        </div>
+                        <div style="font-size: 11px; color: #9ca3af;">
+                            ID: {{ $staff->id }} | Joined: {{ $staff->created_at->format('d M Y') }}
+                        </div>
+                    </div>
+
+                    <div>
+                        @if($staff->role === 'admin')
+                            <span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444;">
+                                Admin 👑
+                            </span>
+                        @else
+                            <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border: 1px solid #6366f1;">
+                                Creator 🎥
+                            </span>
+                        @endif
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        <div style="margin-top: 15px; text-align: right;">
+            <button onclick="document.getElementById('staffModal').style.display='none'"
+                    style="background: #374151; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Modal İçin Gerekli CSS */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(3px); }
+    .modal-content { background: #1f2937; margin: 5% auto; padding: 25px; border-radius: 12px; position: relative; border: 1px solid #374151; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 500px; }
+    .close-btn { float:right; cursor:pointer; font-size:24px; color: #9ca3af; }
+    .close-btn:hover { color: white; }
+    .staff-list { max-height: 400px; overflow-y: auto; padding-right: 5px; }
+    .staff-item { display: flex; align-items: center; justify-content: space-between; background: #111827; padding: 12px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #374151; }
+
+    /* Scrollbar Tasarımı */
+    .staff-list::-webkit-scrollbar { width: 6px; }
+    .staff-list::-webkit-scrollbar-track { background: #111827; }
+    .staff-list::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+</style>
 <script>
     function copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(function() {
-            alert('Link kopyalandı: ' + text);
-        }, function(err) {
-            console.error('Kopyalama hatası: ', err);
-            alert('Kopyalanamadı, lütfen manuel seçip kopyalayın.');
-        });
-    }
-
-
-    function copyLink(url) {
-        navigator.clipboard.writeText(url).then(() => {
-            // Basit bir bildirim (Toast eklenebilir ama alert şimdilik yeterli)
             alert('Link copied to clipboard!');
+        }, function(err) {
+            console.error('Copy error: ', err);
+            prompt('Copy manually:', text);
         });
     }
 </script>
