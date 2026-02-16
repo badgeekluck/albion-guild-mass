@@ -212,6 +212,14 @@
         .modal-content { background: #2b2b36; margin: 10% auto; padding: 30px; border-radius: 12px; max-width: 400px; color: white; position: relative; }
         .btn-join { width: 100%; padding: 12px; background: #6366f1; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-join:hover { background: #4f46e5; }
+
+        @media (max-width: 600px) {
+             .sidebar{width:100%; order:1;}
+             .roster-area{order:2}
+             .main-container {flex-wrap:wrap;}
+        }
+
+        
     </style>
 </head>
 <body>
