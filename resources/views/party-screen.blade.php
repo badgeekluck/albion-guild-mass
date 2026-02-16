@@ -213,10 +213,26 @@
         .btn-join { width: 100%; padding: 12px; background: #6366f1; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-join:hover { background: #4f46e5; }
 
-        @media (max-width: 600px) {
+        @media (max-width: 767px) {
              .sidebar{width:100%; order:1;}
              .roster-area{order:2}
              .main-container {flex-wrap:wrap;}
+        }
+
+
+        /* Header */
+        .header-wrapper{max-width: 1600px; margin: 0 auto 20px auto; background: #25252e; padding: 15px; border-radius: 8px; border: 1px solid #333; display: flex; gap: 30px; align-items: center; color: #ccc;}
+        .header-wrapper .header-item{display: flex; align-items: center; gap: 10px;}
+        .header-wrapper .header-auth{margin-left: 20px; padding-left: 20px; border-left: 1px solid #444; display: flex; flex-direction: column; align-items: flex-end;}
+        .header-wrapper .header-login{margin-left: 20px; padding-left: 20px; border-left: 1px solid #444;}
+
+        .header-wrapper .header-icon{padding: 8px; border-radius: 6px;}
+        
+        @media (max-width: 767px) {
+            .header-wrapper{gap:10px; flex-wrap:wrap;}
+            .header-wrapper .header-login,
+            .header-wrapper .header-auth{margin-top:20px; padding-top: 20px; border-top: 1px solid #444; margin-left:0; padding-left:0; border-left:none;}
+            .header-wrapper .header-icon{padding:4px; font-size:12px;}
         }
 
         
@@ -239,9 +255,9 @@
     $partyCount = ceil($maxSlots / 20);
 @endphp
 
-<div style="max-width: 1600px; margin: 0 auto 20px auto; background: #25252e; padding: 15px; border-radius: 8px; border: 1px solid #333; display: flex; gap: 30px; align-items: center; color: #ccc;">
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <div style="background: #3b82f6; padding: 8px; border-radius: 6px;">⚔️</div>
+<div class="header-wrapper">
+    <div class="header-item">
+        <div class="header-icon" style="background: #3b82f6;">⚔️</div>
         <div>
             <div style="font-size: 11px; text-transform: uppercase; font-weight: bold;">In Party</div>
             <div style="font-size: 18px; font-weight: bold; color: white;">
@@ -250,8 +266,8 @@
             </div>
         </div>
     </div>
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <div style="background: #f59e0b; padding: 8px; border-radius: 6px;">⏳</div>
+    <div class="header-item">
+        <div class="header-icon" style="background: #f59e0b;">⏳</div>
         <div>
             <div style="font-size: 11px; text-transform: uppercase; font-weight: bold;">Waitlist</div>
             <div style="font-size: 18px; font-weight: bold; color: white;">
@@ -259,8 +275,8 @@
             </div>
         </div>
     </div>
-    <div style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
-        <div style="background: #10b981; padding: 8px; border-radius: 6px;">👁️</div>
+    <div class="header-item">
+        <div class="header-icon" style="background: #10b981;">👁️</div>
         <div>
             <div style="font-size: 11px; text-transform: uppercase; font-weight: bold;">Live Viewers</div>
             <div style="font-size: 18px; font-weight: bold; color: white;">
@@ -270,7 +286,7 @@
     </div>
 
     @auth
-        <div style="margin-left: 20px; padding-left: 20px; border-left: 1px solid #444; display: flex; flex-direction: column; align-items: flex-end;">
+        <div class="header-auth">
             <div style="font-size: 12px; color: #ccc; margin-bottom: 6px;">
                 {{ auth()->user()->name }}
             </div>
@@ -290,7 +306,7 @@
             </div>
         </div>
     @else
-        <div style="margin-left: 20px; padding-left: 20px; border-left: 1px solid #444;">
+        <div class="header-login">
             <a href="{{ route('login') }}"
                style="background: #5865F2; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: bold;">
                 Login with Discord
