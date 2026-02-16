@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\LinkController;
@@ -25,6 +26,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/go/{slug}/slots', [LinkController::class, 'updateExtraSlots'])
         ->name('party.slots')
         ->middleware('auth');
+
+    Route::get('/dashboard/attendance', [AttendanceController::class, 'index'])
+        ->middleware(['auth'])
+        ->name('attendance.index');
 
 });
 
