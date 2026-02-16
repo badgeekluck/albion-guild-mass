@@ -12,14 +12,15 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $links = SharedLink::where('creator_id', auth()->id())
+        $links = SharedLink::withCount('attendees')
+            ->where('creator_id', auth()->id())
             ->orderBy('created_at', 'desc')
             ->get();
         $staffMembers = User::whereIn('role', ['admin', 'content-creator'])
             ->orderBy('role')
             ->get();
         $templates = PartyTemplate::all();
-        
+
         return view('dashboard', compact('links', 'staffMembers', 'templates'));
     }
 

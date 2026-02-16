@@ -98,8 +98,13 @@
     @if($links->count() > 0)
         @foreach($links as $link)
             @php
-                $totalSlots = is_array($link->template_snapshot) ? count($link->template_snapshot) : 20;
-                $filledSlots = $link->attendees_count;
+                $templateCount = is_array($link->template_snapshot) ? count($link->template_snapshot) : 20;
+
+                $extraCount = $link->extra_slots ?? 0;
+
+                $totalSlots = $templateCount + $extraCount;
+
+                $filledSlots = $link->attendees_count ?? 0;
             @endphp
 
             <div class="link-card">
