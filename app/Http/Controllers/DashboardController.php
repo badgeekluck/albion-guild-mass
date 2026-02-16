@@ -62,6 +62,7 @@ class DashboardController extends Controller
             'expires_at' => now()->addHours(8), // default 8h
             'template_snapshot' => $templateSnapshot,
             'title' => $request->input('title') ? $request->input('title') : 'Untitled Party',
+            'type' => $request->type ?? 'cta'
         ]);
 
         return back()->with('success', 'Yeni parti linki oluşturuldu!');

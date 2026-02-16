@@ -88,6 +88,13 @@
         <form action="{{ route('dashboard.create') }}" method="POST" class="create-form">
             @csrf
 
+            <div style="flex: 0 0 150px;">
+                <select name="type" style="width: 100%; cursor: pointer;">
+                    <option value="cta">📢 CTA (Mass)</option>
+                    <option value="content">⚔️ PvP Content</option>
+                </select>
+            </div>
+
             <div style="flex: 0 0 250px;">
                 <select name="template_id" style="width: 100%; cursor: pointer;">
                     <option value="">No Template (Standard 20)</option>

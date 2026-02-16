@@ -144,14 +144,14 @@
             cursor: pointer; /* Tıklanabilir olduğunu göster */
         }
         .party-slot.drag-over { border: 2px dashed #6366f1; background: #32324a; }
-        /* Build detayı için hover efekti */
         .party-slot:hover { background-color: rgba(255, 255, 255, 0.05); }
 
         .slot-number { font-weight: bold; color: rgba(255,255,255,0.6); width: 25px; font-size: 12px; }
 
         /* Draggable Card */
         .player-card { display: flex; align-items: center; flex-grow: 1; height: 100%; }
-        .player-card:active { cursor: grabbing; }
+        .player-card.draggable-enabled { cursor: grab; }
+        .player-card.draggable-enabled:active { cursor: grabbing; }
         .player-card.is-dragging { opacity: 0.5; }
 
         .slot-user { font-weight: bold; color: #fff; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px;}
@@ -178,8 +178,7 @@
             background: #383844; padding: 8px; margin-bottom: 6px; border-radius: 4px;
             display: flex; flex-direction: column; gap: 4px;
         }
-        .draggable-enabled { cursor: grab; }
-        .draggable-enabled:active { cursor: grabbing; }
+
         .waitlist-area {
             flex-grow: 1;
             overflow-y: auto;
@@ -238,7 +237,6 @@
         /* Build Modal Specific CSS */
         .albion-equipment-grid {
             display: grid;
-            /* 3 Kolon (Sol - Orta - Sağ), 3 Satır */
             grid-template-columns: 80px 80px 80px;
             grid-template-rows: 80px 80px 80px;
             gap: 12px;
@@ -249,21 +247,20 @@
             border: 2px solid #444;
             margin-top: 15px;
 
-            /* İSTEDİĞİN DÜZEN BURADA AYARLANIYOR */
             grid-template-areas:
-            ".    head cape"  /* 1. Satır: Boş - Kafa - Pelerin */
-            "wep  arm  off"   /* 2. Satır: Silah - Zırh - Offhand */
-            "pot  shoe food"; /* 3. Satır: Pot - Ayakkabı - Yemek */
+            ".    head cape"
+            "wep  arm  off"
+            "pot  shoe food";
         }
-        /* Alanları Eşleştirme */
         .area-head { grid-area: head; }
         .area-cape { grid-area: cape; }
         .area-wep  { grid-area: wep; }
         .area-arm  { grid-area: arm; }
         .area-off  { grid-area: off; }
-        .area-pot  { grid-area: pot; }   /* Sol Alt */
+        .area-pot  { grid-area: pot; }
         .area-shoe { grid-area: shoe; }
-        .area-food { grid-area: food; }  /* Sağ Alt */
+        .area-food { grid-area: food; }
+
         .eq-slot {
             background: #1e1e24;
             border: 1px solid #555;
@@ -275,27 +272,13 @@
         .eq-slot img { width: 90%; height: 90%; object-fit: contain; }
         .eq-label { position: absolute; bottom: 2px; right: 4px; font-size: 9px; color: #666; pointer-events: none; font-weight: bold; }
 
-        /* Grid Yerleşimi (Albion Envanteri) */
+        /* Grid Yerleşimi */
         #eq-head { grid-column: 2; grid-row: 1; }
-        #eq-cape {
-            grid-column: 3;
-            grid-row: 1;
-        }
+        #eq-cape { grid-column: 3; grid-row: 1; }
         #eq-armor { grid-column: 2; grid-row: 2; }
-        #eq-weapon {
-            grid-column: 1;
-            grid-row: 2;
-            /* transform: translateX(-90px); */
-        }
+        #eq-weapon { grid-column: 1; grid-row: 2; }
         #eq-offhand { grid-column: 3; grid-row: 2; }
         #eq-shoe { grid-column: 2; grid-row: 3; }
-        /* Weapon'ı soldaki boşluğa manuel çekiyoruz çünkü grid tam oturmayabilir */
-        /* Daha basit grid: 3x3 */
-        /*
-           . . Head . .
-           Weap Arm Off
-           . . Shoe . .
-        */
 
     </style>
 </head>
@@ -308,11 +291,8 @@
     );
 
     $templateSlots = is_array($link->template_snapshot) ? count($link->template_snapshot) : 20;
-
     $extraSlots = $link->extra_slots ?? 0;
-
     $maxSlots = $templateSlots + $extraSlots;
-
     $partyCount = ceil($maxSlots / 20);
 @endphp
 
@@ -327,6 +307,19 @@
             </div>
         </div>
     </div>
+
+    <div class="header-item">
+        <div class="header-icon" style="background: {{ $link->type == 'content' ? '#ec4899' : '#8b5cf6' }};">
+            {{ $link->type == 'content' ? '⚔️' : '📢' }}
+        </div>
+        <div>
+            <div style="font-size: 11px; text-transform: uppercase; font-weight: bold;">Party Type</div>
+            <div style="font-size: 18px; font-weight: bold; color: white; text-transform: uppercase;">
+                {{ $link->type == 'content' ? 'PvP Content' : 'CTA (Mass)' }}
+            </div>
+        </div>
+    </div>
+
     <div class="header-item">
         <div class="header-icon" style="background: #f59e0b;">⏳</div>
         <div>
@@ -462,13 +455,24 @@
                                     @if($attendee)
                                         @if($isItMe) <span class="you-badge">YOU</span> @endif
 
-                                        <div class="player-card {{ $isAdmin ? 'draggable-enabled' : '' }}"
-                                             draggable="{{ $isAdmin ? 'true' : 'false' }}"
+                                        @php
+                                            // --- DRAG YETKİ KONTROLÜ (GÜNCELLENDİ) ---
+                                            // 1. Admin/Caller ise -> Herkesi sürükleyebilir
+                                            // 2. Content tipindeyse -> Sadece kendini sürükleyebilir
+                                            // 3. CTA tipindeyse -> Sadece Admin sürükleyebilir
+
+                                            $canDrag = $isAdmin || ($link->type == 'content' && $isItMe);
+                                        @endphp
+
+                                        <div class="player-card {{ $canDrag ? 'draggable-enabled' : '' }}"
+                                             draggable="{{ $canDrag ? 'true' : 'false' }}"
                                              ondragstart="drag(event, {{ $attendee->id }})"
-                                             onclick="event.stopPropagation()"> <div class="slot-user" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.1; margin-right: 5px; overflow: hidden;">
-                                            <span style="font-weight: bold; color: #fff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                {{ $attendee->in_game_name ?? $attendee->user->name }}
-                                            </span>
+                                             onclick="event.stopPropagation()">
+
+                                            <div class="slot-user" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.1; margin-right: 5px; overflow: hidden;">
+                                                <span style="font-weight: bold; color: #fff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                    {{ $attendee->in_game_name ?? $attendee->user->name }}
+                                                </span>
                                                 @if($attendee->in_game_name && $attendee->in_game_name !== $attendee->user->name)
                                                     <span style="font-size: 10px; color: #888;">(DC: {{ $attendee->user->name }})</span>
                                                 @endif
@@ -477,7 +481,6 @@
                                             @php
                                                 $isMySlot = auth()->id() == $attendee->user_id;
                                                 $hasFillRole = in_array('Fill', [$attendee->main_role, $attendee->second_role, $attendee->third_role, $attendee->fourth_role]);
-
                                                 $shouldSeeWarning = !$isExtraSlot && $attendee->is_forced && !$hasFillRole && ($isAdmin || $isMySlot);
                                             @endphp
 
@@ -557,10 +560,17 @@
 
             @foreach($link->attendees as $att)
                 @if(is_null($att->slot_index))
-                    <div class="waitlist-item {{ $isAdmin ? 'draggable-enabled' : '' }}"
-                         draggable="{{ $isAdmin ? 'true' : 'false' }}"
+
+                    @php
+                        // --- WAITLIST DRAG YETKİ KONTROLÜ ---
+                        $isMe = auth()->check() && $att->user_id == auth()->id();
+                        $canDragWaitlist = $isAdmin || ($link->type == 'content' && $isMe);
+                    @endphp
+
+                    <div class="waitlist-item {{ $canDragWaitlist ? 'draggable-enabled' : '' }}"
+                         draggable="{{ $canDragWaitlist ? 'true' : 'false' }}"
                          ondragstart="drag(event, {{ $att->id }})"
-                         style="{{ !$isAdmin ? 'pointer-events: none;' : '' }}">
+                         style="{{ !$canDragWaitlist ? 'pointer-events: none;' : '' }}">
 
                         <div style="font-weight: bold; color: #fff; font-size: 13px;">
                             {{ $att->in_game_name ?? $att->user->name }}
