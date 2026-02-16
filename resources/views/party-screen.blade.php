@@ -15,8 +15,9 @@
             width: 98%;
             margin: 0 auto;
             align-items: flex-start;
-            height: 100vh;
-            overflow: hidden;
+            /* Ekran yüksekliğinden üst barı çıkarıyoruz */
+            height: calc(100vh - 120px);
+            overflow: hidden; /* Dışarıdan taşmayı engelle */
         }
 
         @media (max-width: 1400px) {
@@ -90,9 +91,8 @@
 
         .roster-area {
             flex: 1;
-            overflow-x: auto;
-            overflow-y: hidden;
-            padding-bottom: 20px;
+            display: flex;
+            flex-direction: column;
             height: 100%;
         }
 
@@ -101,7 +101,9 @@
             flex-wrap: nowrap;
             gap: 15px;
             align-items: flex-start;
-            padding-right: 20px;
+            padding-bottom: 10px;
+            overflow-x: auto; /* Yatayda kolonlar arası kaydırma */
+            height: 100%;
         }
 
         .party-column {
@@ -110,6 +112,27 @@
             border: 1px solid #333;
             border-radius: 8px;
             padding: 8px;
+            display: flex;
+            flex-direction: column;
+            max-height: 100%; /* Konteyner boyunu aşmasın */
+        }
+
+        .slots-container {
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 4px; /* Scroll bar için pay */
+        }
+
+        .slots-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .slots-container::-webkit-scrollbar-track {
+            background: #1e1e24;
+        }
+        .slots-container::-webkit-scrollbar-thumb {
+            background: #4f46e5;
+            border-radius: 10px;
         }
 
         .party-header {
@@ -146,17 +169,22 @@
         /* Waitlist & Sidebar */
         .sidebar {
             width: 300px;
-            background: #2b2b36; padding: 20px; border-radius: 8px;
-            position: sticky; top: 20px;
-            flex-shrink: 0;
+            background: #2b2b36;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
         .waitlist-item {
             background: #383844; padding: 8px; margin-bottom: 6px; border-radius: 4px;
             cursor: grab; display: flex; flex-direction: column; gap: 4px;
         }
         .waitlist-area {
-            max-height: 600px;
+            flex-grow: 1;
             overflow-y: auto;
+            max-height: 600px;
             min-height: 150px;
             border: 2px dashed #444;
             border-radius: 6px;
@@ -173,7 +201,7 @@
             background: #4f46e5;
             border-radius: 10px;
         }
-        
+
         .waitlist-area.drag-over { border-color: #6366f1; background: #323242; }
 
         /* Tags */
@@ -262,7 +290,8 @@
             @for ($p = 0; $p < $partyCount; $p++)
                 <div class="party-column">
                     <div class="party-header">Party {{ $p + 1 }}</div>
-
+                    
+                    <div class="slots-container">
                     @php
                         $start = ($p * 20) + 1;
                         $end = min(($p * 20) + 20, $maxSlots);
@@ -377,6 +406,7 @@
 
                         </div>
                     @endfor
+                    </div>
                 </div>
             @endfor
         </div>
