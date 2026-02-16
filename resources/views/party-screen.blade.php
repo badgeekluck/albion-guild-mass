@@ -231,7 +231,7 @@
         @media (max-width: 767px) {
             .header-wrapper{gap:10px; flex-wrap:wrap;}
             .header-wrapper .header-login,
-            .header-wrapper .header-auth{margin-top:20px; padding-top: 20px; border-top: 1px solid #444; margin-left:0; padding-left:0; border-left:none;}
+            .header-wrapper .header-auth{margin-top:20px; padding-top: 20px; border-top: 1px solid #444; margin-left:0; padding-left:0; border-left:none; width:100%;}
             .header-wrapper .header-icon{padding:4px; font-size:12px;}
         }
 
