@@ -60,8 +60,14 @@ class DashboardController extends Controller
 
     public function deleteLink($id)
     {
-        $link = SharedLink::where('id', $id)->where('creator_id', auth()->id())->firstOrFail();
+        $link = SharedLink::findOrFail($id);
+
+        if (auth()->user()->role !== 'admin' && auth()->id() !== $link->creator_id) {
+            abort(403, 'Bu linki silme yetkiniz yok.');
+        }
+        
         $link->delete();
-        return back()->with('success', 'Link silindi.');
+
+        return back()->with('success', 'Link başarıyla silindi.');
     }
 }
