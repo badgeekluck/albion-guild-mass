@@ -42,52 +42,64 @@
             <a href="{{ route('builds.create') }}" class="btn-new">+ Create New Build</a>
         </div>
     </div>
-
-    <table>
-        <thead>
-        <tr>
-            <th>Build Name</th>
-            <th>Category</th>
-            <th>Weapon</th>
-            <th>Head</th>
-            <th>Armor</th>
-            <th>Shoes</th>
-            <th>Action</th>
-        </tr>
-        </thead>
-        <tbody>
-        @forelse($builds as $build)
+        <table>
+            <thead>
             <tr>
-                <td style="font-weight: bold; color: white;">{{ $build->name }}</td>
-                <td>
+                <th>Build Name</th>
+                <th>Category</th>
+                <th>Main Weapon</th>
+                <th>Updated</th> <th>Created By</th> <th>Action</th>
+            </tr>
+            </thead>
+            <tbody>
+            @forelse($builds as $build)
+                <tr>
+                    <td style="font-weight: bold; color: white;">
+                        {{ $build->name }}
+                    </td>
+
+                    <td>
                     <span class="badge badge-{{ $build->role_category }}">
                         {{ $build->role_category }}
                     </span>
-                </td>
-                <td>{{ $build->weapon->name ?? '-' }}</td>
-                <td>{{ $build->head->name ?? '-' }}</td>
-                <td>{{ $build->armor->name ?? '-' }}</td>
-                <td>{{ $build->shoe->name ?? '-' }}</td>
-                <td>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <a href="{{ route('builds.edit', $build->id) }}" style="text-decoration: none; font-size: 16px;" title="Edit">
-                            ✏️
-                        </a>
+                    </td>
 
-                        <form action="{{ route('builds.destroy', $build->id) }}" method="POST" onsubmit="return confirm('Are you sure?');" style="margin:0;">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="btn-del" title="Delete">🗑️</button>
-                        </form>
-                    </div>
-                </td>
-            </tr>
-        @empty
-            <tr>
-                <td colspan="7" style="text-align:center; color:#888;">No builds found. Click "Create New Build" to start.</td>
-            </tr>
-        @endforelse
-        </tbody>
-    </table>
+                    <td style="color: #ccc;">{{ $build->weapon->name ?? '-' }}</td>
+
+                    <td style="font-size: 12px; color: #888;">
+                        <div style="display:flex; flex-direction:column;">
+                            <span style="color:white;">{{ $build->updated_at->diffForHumans() }}</span>
+                            <span style="font-size:10px;">{{ $build->updated_at->format('d M Y') }}</span>
+                        </div>
+                    </td>
+
+                    <td>
+                        @if($build->creator)
+                            <span style="display: inline-block; background: #374151; padding: 2px 8px; border-radius: 12px; font-size: 11px; border: 1px solid #4b5563; color: #e5e7eb;">
+                            👤 {{ $build->creator->name }}
+                        </span>
+                        @else
+                            <span style="font-style: italic; color: #666; font-size: 11px;">System</span>
+                        @endif
+                    </td>
+
+                    <td>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <a href="{{ route('builds.edit', $build->id) }}" style="text-decoration: none; font-size: 16px;" title="Edit">✏️</a>
+                            <form action="{{ route('builds.destroy', $build->id) }}" method="POST" onsubmit="return confirm('Silmek istediğine emin misin?');" style="margin:0;">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="btn-del" title="Delete">🗑️</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="6" style="text-align:center; color:#888; padding: 20px;">No builds found.</td>
+                </tr>
+            @endforelse
+            </tbody>
+        </table>
 </div>
 
 </body>

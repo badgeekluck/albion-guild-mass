@@ -10,7 +10,7 @@ class BuildController extends Controller
 {
     public function index()
     {
-        $builds = SavedBuild::orderBy('created_at', 'desc')->get();
+        $builds = SavedBuild::with('creator')->orderBy('updated_at', 'desc')->get();
         return view('admin.build.index', compact('builds'));
     }
 
@@ -77,8 +77,10 @@ class BuildController extends Controller
             'role_category' => 'required',
             'weapon_id' => 'required|exists:game_roles,id',
         ]);
+        $data = $request->all();
+        $data['created_by'] = auth()->id();
 
-        SavedBuild::create($request->all());
+        SavedBuild::create($data);
 
         return redirect()->route('builds.index')->with('success', 'Build başarıyla kaydedildi! 🛡️');
     }

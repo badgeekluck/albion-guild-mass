@@ -41,4 +41,8 @@ class SavedBuild extends Model
     {
         return $this->belongsTo(GameRole::class, 'potion_id');
     }
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }
