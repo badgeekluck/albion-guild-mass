@@ -140,3 +140,7 @@ Setup is ready! Visit in your browser: http://localhost:8000
 
 - NEW FEATURES ARE ON THE WAY!
 - WE ARE COOKING!
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
