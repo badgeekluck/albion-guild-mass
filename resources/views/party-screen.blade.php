@@ -536,7 +536,6 @@
     </div>
 
     <div class="sidebar">
-        <div class="sidebar">
             @if($link->status === 'completed')
 
                 <div style="background: #374151; padding: 20px 10px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #fca5a5; border: 1px solid #7f1d1d; margin-bottom: 15px;">
@@ -627,7 +626,6 @@
                 <div style="text-align:center; padding-top:20px; color:#666; font-size:12px;">Waitlist Empty</div>
             @endif
         </div>
-    </div>
 </div>
 
 <div id="joinModal" class="modal" onclick="if(event.target==this)this.style.display='none'">
