@@ -15,13 +15,13 @@
 
 ## 🚀 Key Features (Özellikler)
 
-* **🛡️ Visual Roster:** Parti slotlarını yönetmek için Sürükle & Bırak (Drag & Drop) arayüzü.
-* **✅ Role Validation:** Oyuncuların belirli roller (Tank, Heal, DPS, Support) için geçerli silahları seçmesini sağlar.
-* **💣 Dynamic Slots:** Caller'lar tarafından anlık olarak "Bomb Squad" veya ekstra slotlar eklenebilir.
-* **📊 Attendance System:** Oyuncu katılım geçmişini ve rol tercihlerini takip eder (Arşivlenmiş veri desteği).
-* **🔐 Discord Integration:** Discord OAuth2 ile güvenli giriş ve kimlik doğrulama.
-* **⏳ Waitlist Management:** Ana parti dolduğunda oyuncular için otomatik taşma (overflow) sistemi.
-* **🛠️ Staff Tools:** Adminler ve Caller'lar için şablonları ve rosterları yönetmek üzere özel panel.
+* **🛡️ Visual Roster:** Drag & Drop interface for managing party slots.
+* **✅ Role Validation:** Ensures players select valid weapons for specific roles (Tank, Heal, DPS, Support).
+* **💣 Dynamic Slots:** "Bomb Squad" or extra slots can be added instantly by Callers.
+* **📊 Attendance System:** Tracks player attendance history and role preferences (Archived data support).
+* **🔐 Discord Integration:** Secure login and authentication via Discord OAuth2.
+* **⏳ Waitlist Management:** Automatic overflow system for players when the main party is full.
+* **🛠️ Staff Tools:** Dedicated panel for Admins and Callers to manage templates and rosters.
 
 ---
 
