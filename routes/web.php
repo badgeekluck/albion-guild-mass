@@ -33,6 +33,8 @@ Route::middleware(['auth'])->group(function () {
         ->middleware(['auth'])
         ->name('attendance.index');
 
+    Route::get('/dashboard/attendance/{id}', [AttendanceController::class, 'show'])->name('attendance.show');
+
     Route::post('/dashboard/archive/{id}', [DashboardController::class, 'archiveLink'])->name('dashboard.archive');
 
 });

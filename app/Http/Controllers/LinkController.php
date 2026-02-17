@@ -155,6 +155,10 @@ class LinkController extends Controller
     {
         $link = SharedLink::where('slug', $slug)->firstOrFail();
 
+        if ($link->status === 'completed') {
+            return back()->with('error', 'Bu etkinlik tamamlandı (Arşivlendi). Değişiklik yapılamaz.');
+        }
+
         $attendee = $link->attendees()->where('user_id', auth()->id())->first();
 
         if ($attendee) {
@@ -168,6 +172,10 @@ class LinkController extends Controller
     public function updateExtraSlots(Request $request, $slug)
     {
         $link = SharedLink::where('slug', $slug)->firstOrFail();
+
+        if ($link->status === 'completed') {
+            return back()->with('error', 'Bu etkinlik tamamlandı (Arşivlendi). Değişiklik yapılamaz.');
+        }
 
         if (auth()->user()->role !== 'admin' && auth()->id() !== $link->creator_id) {
             return back()->with('error', 'Bu işlem için yetkiniz yok.');
@@ -189,6 +197,10 @@ class LinkController extends Controller
     public function joinParty(Request $request, $slug)
     {
         $link = SharedLink::where('slug', $slug)->firstOrFail();
+
+        if ($link->status === 'completed') {
+            return back()->with('error', 'Bu etkinlik tamamlandı (Arşivlendi). Değişiklik yapılamaz.');
+        }
 
         $validRoles = GameRole::pluck('name')->toArray();
         $validRoles[] = 'Fill';
@@ -214,6 +226,10 @@ class LinkController extends Controller
     public function moveMember(Request $request, $slug)
     {
         $link = SharedLink::where('slug', $slug)->firstOrFail();
+
+        if ($link->status === 'completed') {
+            return back()->with('error', 'Bu etkinlik tamamlandı (Arşivlendi). Değişiklik yapılamaz.');
+        }
 
         $attendee = $link->attendees()->where('id', $request->attendee_id)->firstOrFail();
 

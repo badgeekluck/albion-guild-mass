@@ -121,10 +121,17 @@
                     <div style="font-weight:bold; font-size:16px; color:white;">
                         {{ $link->title ?? 'Untitled Party' }}
                     </div>
-                    <div style="font-size:12px; color:#9ca3af; margin-top:4px;">
-                        <span style="background:#374151; padding:2px 6px; border-radius:4px;">Code: {{ $link->slug }}</span>
-                        <span style="margin-left:10px;">📅 {{ $link->created_at->diffForHumans() }}</span>
-                        <span style="margin-left:10px; color:#6366f1;">👥 {{ $link->attendees->count() }} Joined</span>
+                    <div style="font-size:12px; color:#9ca3af; margin-top:6px; display:flex; align-items:center; gap:10px;">
+                        Created By: <span style="display:flex; align-items:center; gap:4px; background:rgba(139, 92, 246, 0.15); color:#a78bfa; padding:2px 8px; border-radius:4px; border:1px solid rgba(139, 92, 246, 0.3);">
+        👑                   {{ $link->creator->name ?? 'Unknown' }}
+                        </span>
+                        <span style="background:#374151; padding:2px 6px; border-radius:4px; border:1px solid #4b5563;">
+                            Code: {{ $link->slug }}
+                        </span>
+                        <span>📅 {{ $link->created_at->diffForHumans() }}</span>
+                        <span style="color:#6366f1; font-weight:bold;">
+        👥 {{ $link->attendees->count() }} Joined
+    </span>
                     </div>
                 </div>
 
@@ -141,13 +148,6 @@
                             🏁 Finish
                         </button>
                     </form>
-
-                    <form action="{{ route('dashboard.delete', $link->id) }}" method="POST" onsubmit="return confirm('DİKKAT: Bu işlem geri alınamaz! Silmek istediğine emin misin?');">
-                        @csrf @method('DELETE')
-                        <button type="submit" style="background:#ef4444; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px;">
-                            🗑️ Delete
-                        </button>
-                    </form>
                 </div>
             </div>
         @endforeach
@@ -161,24 +161,42 @@
     </h3>
 
     @if($archivedLinks->count() > 0)
-        <div style="opacity: 0.7;"> @foreach($archivedLinks as $link)
-                <div class="link-card" style="display:flex; justify-content:space-between; align-items:center; background:#18181b; padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid #27272a;">
+        <div style="opacity: 0.85;"> @foreach($archivedLinks as $link)
+                <div class="link-card" style="display:flex; justify-content:space-between; align-items:center; background:#18181b; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #27272a;">
+
                     <div>
-                        <div style="font-weight:bold; font-size:14px; color:#d1d5db; text-decoration: line-through;">
-                            {{ $link->title ?? 'Untitled Party' }}
+                        <div style="font-weight:bold; font-size:15px; color:#d1d5db; display:flex; align-items:center; gap:10px;">
+                            <span style="text-decoration: line-through;">{{ $link->title ?? 'Untitled Party' }}</span>
+
+                            @if($link->type == 'content')
+                                <span style="font-size:10px; background:#831843; color:#fbcfe8; padding:2px 6px; border-radius:4px; border:1px solid #be185d;">PvP Content</span>
+                            @else
+                                <span style="font-size:10px; background:#451a03; color:#fbbf24; padding:2px 6px; border-radius:4px; border:1px solid #b45309;">CTA</span>
+                            @endif
                         </div>
-                        <div style="font-size:11px; color:#6b7280;">
-                            <span>Finished: {{ $link->updated_at->diffForHumans() }}</span>
-                            <span style="margin-left:10px;">Total: {{ $link->attendees->count() }} Players</span>
+
+                        <div style="font-size:12px; color:#6b7280; margin-top:6px; display:flex; align-items:center; gap:10px;">
+
+                        <span style="display:flex; align-items:center; gap:4px; background:rgba(75, 85, 99, 0.4); color:#9ca3af; padding:2px 8px; border-radius:4px; border:1px solid #4b5563;">
+                            👑 {{ $link->creator->name ?? 'Unknown' }}
+                        </span>
+
+                            <span>🏁 {{ $link->updated_at->diffForHumans() }}</span>
+
+                            <span style="color:#6366f1;">👥 {{ $link->attendees->count() }} Players</span>
                         </div>
                     </div>
 
                     <div style="display:flex; gap:10px;">
-                        <a href="{{ route('party.show', $link->slug) }}" class="btn-secondary" style="font-size:11px; padding:5px 10px;">View Stats</a>
+                        <a href="{{ route('party.show', $link->slug) }}" class="btn-secondary" style="font-size:12px; padding:6px 12px; background:#374151; color:#e5e7eb; text-decoration:none; border-radius:4px;">
+                            👁️ View Stats
+                        </a>
 
-                        <form action="{{ route('dashboard.delete', $link->id) }}" method="POST" onsubmit="return confirm('Arşivden tamamen silmek istediğine emin misin?');">
+                        <form action="{{ route('dashboard.delete', $link->id) }}" method="POST" onsubmit="return confirm('Arşivden tamamen silmek istediğine emin misin?');" style="margin:0;">
                             @csrf @method('DELETE')
-                            <button type="submit" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:14px;">🗑️</button>
+                            <button type="submit" style="background:none; border:none; padding:5px; cursor:pointer;" title="Remove from list">
+                                🗑️
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -187,7 +205,6 @@
     @else
         <p style="color:#444; font-size:12px;">Archive is empty.</p>
     @endif
-
 </div>
 
 <div id="staffModal" class="modal" onclick="if(event.target==this)this.style.display='none'">

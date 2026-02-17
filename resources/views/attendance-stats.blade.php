@@ -10,7 +10,7 @@
 
         /* Header */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #374151; padding-bottom: 20px; }
-        .btn-back { background: #374151; color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; }
+        .btn-back { background: #374151; color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; transition: 0.2s; }
         .btn-back:hover { background: #4b5563; }
 
         /* Table Card */
@@ -26,19 +26,16 @@
         .rank-1 { color: #fbbf24; font-weight: bold; font-size: 18px; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); } /* Gold */
         .rank-2 { color: #9ca3af; font-weight: bold; font-size: 16px; } /* Silver */
         .rank-3 { color: #b45309; font-weight: bold; font-size: 16px; } /* Bronze */
-        .rank-num { font-family: monospace; color: #6b7280; }
+        .rank-num { font-family: monospace; color: #6b7280; font-weight: bold; }
 
-        /* Role Badges */
-        .role-badge {
-            display: inline-block; padding: 4px 10px; border-radius: 4px;
-            font-size: 11px; font-weight: bold; text-transform: uppercase; margin-right: 5px;
-        }
-        /* Basit renk ataması - İstersen detaylandırabilirsin */
-        .bg-blue { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid #2563eb; }
+        /* Progress Bar */
+        .progress-container { width: 100px; height: 6px; background: #374151; border-radius: 3px; overflow: hidden; margin-top: 5px; }
+        .progress-bar { height: 100%; background: #3b82f6; }
 
-        /* Progress Bar for Attendance */
-        .progress-wrapper { width: 100px; height: 6px; background: #374151; border-radius: 3px; overflow: hidden; margin-top: 5px; }
-        .progress-bar { height: 100%; background: #6366f1; }
+        /* Stat Badges */
+        .stat-badge { font-weight: bold; font-size: 15px; }
+        .cta-color { color: #fbbf24; } /* Amber for CTA */
+        .content-color { color: #a78bfa; } /* Purple for Content */
     </style>
 </head>
 <body>
@@ -47,7 +44,11 @@
     <div class="header">
         <div>
             <h1 style="margin:0; font-size:24px; color:white;">📊 Guild Attendance Records</h1>
-            <p style="color:#9ca3af; margin:5px 0 0 0;">Tracking participation across all parties (Active & Archived).</p>
+            <p style="color:#9ca3af; margin:5px 0 0 0;">
+                Tracking participation across
+                <span style="color:#fbbf24; font-weight:bold;">CTA (Mass)</span> and
+                <span style="color:#a78bfa; font-weight:bold;">PvP Content</span>.
+            </p>
         </div>
         <a href="{{ route('dashboard') }}" class="btn-back">⬅ Back to Dashboard</a>
     </div>
@@ -56,53 +57,80 @@
         <table>
             <thead>
             <tr>
-                <th style="width: 50px;">Rank</th>
+                <th style="width: 60px; text-align: center;">Rank</th>
                 <th>Player (IGN)</th>
-                <th>Total Raids</th>
-                <th>Most Played Role</th>
-                <th>Last Seen</th>
+                <th>Total Activity</th>
+                <th>📢 CTA Count</th>
+                <th>⚔️ PvP Content</th>
+                <th>Joined Date</th>
             </tr>
             </thead>
             <tbody>
-            @foreach($playerStats as $index => $player)
+            @if(isset($users) && count($users) > 0)
                 @php
-                    $rank = $index + 1;
-                    $maxEvents = $playerStats->first()['total_events'];
-                    $percentage = ($player['total_events'] / $maxEvents) * 100;
+                    // En yüksek katılımı bul (Bar yüzdesi için)
+                    $maxAttendance = $users->first()->total_attendance > 0 ? $users->first()->total_attendance : 1;
                 @endphp
+
+                @foreach($users as $index => $user)
+                    @php
+                        $rank = $index + 1;
+                        $percentage = ($user->total_attendance / $maxAttendance) * 100;
+                    @endphp
+                    <tr>
+                        <td style="text-align: center;">
+                            @if($rank == 1) <span class="rank-1">🥇 1</span>
+                            @elseif($rank == 2) <span class="rank-2">🥈 2</span>
+                            @elseif($rank == 3) <span class="rank-3">🥉 3</span>
+                            @else <span class="rank-num">#{{ $rank }}</span>
+                            @endif
+                        </td>
+
+                        <td>
+                            <a href="{{ route('attendance.show', $user->id) }}" style="text-decoration: none;">
+                                <div style="font-weight: bold; color: #60a5fa; font-size: 15px; transition: color 0.2s;">
+                                    {{ $user->name }} ↗
+                                </div>
+                            </a>
+                            <div style="font-size: 11px; color: #6b7280;">ID: {{ $user->id }}</div>
+                        </td>
+
+                        <td>
+                            <div style="font-size: 16px; font-weight: bold; color: white;">
+                                {{ $user->total_attendance }}
+                            </div>
+                            <div class="progress-container">
+                                <div class="progress-bar" style="width: {{ $percentage }}%"></div>
+                            </div>
+                        </td>
+
+                        <td>
+                            <span class="stat-badge cta-color">
+                                {{ $user->cta_attendance }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="stat-badge content-color">
+                                {{ $user->content_attendance }}
+                            </span>
+                        </td>
+
+                        <td style="color: #d1d5db; font-size: 13px;">
+                            {{ $user->created_at->format('d M Y') }}
+                            <div style="font-size: 11px; color: #6b7280;">
+                                {{ $user->created_at->diffForHumans() }}
+                            </div>
+                        </td>
+                    </tr>
+                @endforeach
+            @else
                 <tr>
-                    <td style="text-align: center;">
-                        @if($rank == 1) <span class="rank-1">🥇 1</span>
-                        @elseif($rank == 2) <span class="rank-2">🥈 2</span>
-                        @elseif($rank == 3) <span class="rank-3">🥉 3</span>
-                        @else <span class="rank-num">#{{ $rank }}</span>
-                        @endif
-                    </td>
-                    <td>
-                        <div style="font-weight: bold; color: white; font-size: 15px;">{{ $player['name'] }}</div>
-                    </td>
-                    <td>
-                        <div style="font-size: 16px; font-weight: bold; color: white;">{{ $player['total_events'] }}</div>
-                        <div class="progress-wrapper">
-                            <div class="progress-bar" style="width: {{ $percentage }}%"></div>
-                        </div>
-                    </td>
-                    <td>
-                            <span class="role-badge bg-blue">
-                                {{ $player['most_played_role'] ?: 'Unknown' }}
-                            </span>
-                        <span style="font-size: 11px; color: #6b7280;">
-                                ({{ $player['most_played_count'] }} times)
-                            </span>
-                    </td>
-                    <td style="color: #d1d5db; font-size: 13px;">
-                        {{ \Carbon\Carbon::parse($player['last_seen'])->diffForHumans() }}
-                        <div style="font-size: 11px; color: #6b7280;">
-                            {{ \Carbon\Carbon::parse($player['last_seen'])->format('d M Y') }}
-                        </div>
+                    <td colspan="6" style="text-align:center; padding: 30px; color: #6b7280;">
+                        No attendance records found yet.
                     </td>
                 </tr>
-            @endforeach
+            @endif
             </tbody>
         </table>
     </div>

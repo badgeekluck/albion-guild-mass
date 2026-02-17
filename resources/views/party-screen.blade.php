@@ -296,6 +296,12 @@
     $partyCount = ceil($maxSlots / 20);
 @endphp
 
+@if($link->status === 'completed')
+    <div style="background-color: #7f1d1d; color: #fecaca; text-align: center; padding: 12px; font-weight: bold; border-bottom: 1px solid #ef4444; margin: -20px -20px 20px -20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+        🔒 THIS EVENT IS OVER (ARCHIVED)
+    </div>
+@endif
+
 <div class="header-wrapper">
     <div class="header-item">
         <div class="header-icon" style="background: #3b82f6;">⚔️</div>
@@ -388,17 +394,23 @@
                 <span style="color: #fbbf24; font-weight: bold; font-size: 13px;">💣 BOMB SQUAD / EXTRA:</span>
 
                 <div style="display: flex; align-items: center; gap: 5px;">
-                    <form action="{{ route('party.slots', $link->slug) }}" method="POST" style="margin:0;">
-                        @csrf <input type="hidden" name="action" value="remove">
-                        <button type="submit" style="background: #ef4444; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
-                    </form>
+
+                    @if($link->status !== 'completed')
+                        <form action="{{ route('party.slots', $link->slug) }}" method="POST" style="margin:0;">
+                            @csrf <input type="hidden" name="action" value="remove">
+                            <button type="submit" style="background: #ef4444; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
+                        </form>
+                    @endif
 
                     <span style="color: white; font-weight: bold; font-size: 16px; min-width: 30px; text-align: center;">{{ $extraSlots }}</span>
 
-                    <form action="{{ route('party.slots', $link->slug) }}" method="POST" style="margin:0;">
-                        @csrf <input type="hidden" name="action" value="add">
-                        <button type="submit" style="background: #22c55e; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
-                    </form>
+                    @if($link->status !== 'completed')
+                        <form action="{{ route('party.slots', $link->slug) }}" method="POST" style="margin:0;">
+                            @csrf <input type="hidden" name="action" value="add">
+                            <button type="submit" style="background: #22c55e; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+                        </form>
+                    @endif
+
                 </div>
             </div>
         @endif
@@ -524,30 +536,52 @@
     </div>
 
     <div class="sidebar">
-        @auth
-            @php
-                $myAttendance = $link->attendees->where('user_id', auth()->id())->first();
-            @endphp
+        <div class="sidebar">
+            @if($link->status === 'completed')
 
-            @if($myAttendance)
-                <form action="{{ route('party.leave', $link->slug) }}" method="POST" onsubmit="return confirm('Partiden ayrılmak istediğine emin misin?');">
-                    @csrf
-                    <button type="submit" class="btn-join" style="background-color: #ef4444; border: 1px solid #dc2626; color: white;">
-                        🚪 Leave Party
-                    </button>
-                </form>
-
-                <div style="text-align: center; margin-top: 8px; font-size: 11px; color: #888;">
-                    Kayıtlı Rol: <strong style="color:#fbbf24;">{{ $myAttendance->main_role }}</strong>
+                <div style="background: #374151; padding: 20px 10px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #fca5a5; border: 1px solid #7f1d1d; margin-bottom: 15px;">
+                    <div style="font-size: 24px; line-height: 1;">⛔</div>
+                    <div style="font-weight: bold; font-style: normal; font-size: 15px;">Event is over.</div>
+                    <div style="font-size: 11px; color: #9ca3af; text-align: center;">Joins are deactivated.</div>
                 </div>
+
+                @auth
+                    @php
+                        $myAttendance = $link->attendees->where('user_id', auth()->id())->first();
+                    @endphp
+                    @if($myAttendance)
+                        <div style="text-align: center; margin-top: 5px; font-size: 11px; color: #888;">
+                            Senin Rolün: <strong style="color:#fbbf24;">{{ $myAttendance->main_role }}</strong>
+                        </div>
+                    @endif
+                @endauth
+
             @else
-                <button class="btn-join" onclick="document.getElementById('joinModal').style.display='block'">Join Party</button>
+                @auth
+                    @php
+                        $myAttendance = $link->attendees->where('user_id', auth()->id())->first();
+                    @endphp
+
+                    @if($myAttendance)
+                        <form action="{{ route('party.leave', $link->slug) }}" method="POST" onsubmit="return confirm('Partiden ayrılmak istediğine emin misin?');">
+                            @csrf
+                            <button type="submit" class="btn-join" style="background-color: #ef4444; border: 1px solid #dc2626; color: white;">
+                                🚪 Leave Party
+                            </button>
+                        </form>
+
+                        <div style="text-align: center; margin-top: 8px; font-size: 11px; color: #888;">
+                            Kayıtlı Rol: <strong style="color:#fbbf24;">{{ $myAttendance->main_role }}</strong>
+                        </div>
+                    @else
+                        <button class="btn-join" onclick="document.getElementById('joinModal').style.display='block'">Join Party</button>
+                    @endif
+                @else
+                    <a href="{{ route('login') }}" class="btn-join" style="text-decoration:none; display:block; text-align:center; line-height:40px; background-color: #5865F2;">
+                        Login to Join
+                    </a>
+                @endauth
             @endif
-        @else
-            <a href="{{ route('login') }}" class="btn-join" style="text-decoration:none; display:block; text-align:center; line-height:40px; background-color: #5865F2;">
-                Login to Join
-            </a>
-        @endauth
 
         <h4 style="margin-top: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; font-size: 14px;">
             Registered Members (Waitlist)

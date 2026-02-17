@@ -18,12 +18,14 @@ class DashboardController extends Controller
             ->orderBy('name')
             ->get();
 
-        $activeLinks = SharedLink::where('creator_id', auth()->id())
+        $activeLinks = SharedLink::with('creator')
+            ->where('creator_id', auth()->id())
             ->where('status', 'active')
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $archivedLinks = SharedLink::where('creator_id', auth()->id())
+        $archivedLinks = SharedLink::with('creator')
+            ->where('creator_id', auth()->id())
             ->where('status', 'completed')
             ->orderBy('created_at', 'desc')
             ->take(10)

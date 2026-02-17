@@ -2,41 +2,61 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\LinkAttendee;
-use Illuminate\Support\Facades\DB;
+use App\Models\SharedLink;
+use App\Models\User;
 
 class AttendanceController extends Controller
 {
     public function index()
     {
-        $attendees = LinkAttendee::whereHas('link', function($q) {
-            $q->withTrashed();
-        })
-            ->whereNotNull('slot_index')
+        $users = User::withCount([
+            'attendees as total_attendance' => function ($query) {
+                $query->whereHas('link', function ($q) {
+                    $q->withTrashed()
+                    ->where('status', 'completed');
+                });
+            },
+
+            'attendees as cta_attendance' => function ($query) {
+                $query->whereHas('link', function ($q) {
+                    $q->withTrashed()
+                    ->where('type', 'cta')->where('status', 'completed');
+                });
+            },
+
+            'attendees as content_attendance' => function ($query) {
+                $query->whereHas('link', function ($q) {
+                    $q->withTrashed()
+                    ->where('type', 'content')->where('status', 'completed');
+                });
+            }
+        ])
+            ->orderBy('total_attendance', 'desc')
             ->get();
 
-        $playerStats = $attendees->groupBy('in_game_name')->map(function($records) {
+        return view('attendance-stats', compact('users'));
+    }
 
-            $roles = $records->groupBy('main_role')
-                ->map->count()
-                ->sortDesc();
+    public function show($id)
+    {
+        $user = User::findOrFail($id);
 
-            $mostPlayedRole = $roles->keys()->first();
-            $roleCount = $roles->first();
+        $history = LinkAttendee::with(['link' => function($q) {
+            $q->withTrashed();
+        }])
+            ->where('user_id', $id)
+            ->whereHas('link', function($q) {
+                $q->withTrashed()
+                ->where('status', 'completed');
+            })
+            ->orderByDesc(
+                SharedLink::withTrashed()
+                ->select('created_at')
+                    ->whereColumn('shared_links.id', 'link_attendees.shared_link_id')
+            )
+            ->get();
 
-            return [
-                'name' => $records->first()->in_game_name,
-                'total_events' => $records->count(),
-                'last_seen' => $records->max('created_at'),
-                'most_played_role' => $mostPlayedRole,
-                'role_breakdown' => $roles,
-                'most_played_count' => $roleCount,
-            ];
-        })
-            ->sortByDesc('total_events')
-            ->values();
-
-        return view('attendance-stats', compact('playerStats'));
+        return view('attendance-show', compact('user', 'history'));
     }
 }
