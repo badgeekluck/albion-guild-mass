@@ -205,9 +205,13 @@ class LinkController extends Controller
         $validRoles = GameRole::pluck('name')->toArray();
         $validRoles[] = 'Fill';
 
+        $roleObj = \App\Models\GameRole::where('name', $request->main_role)->first();
+        $roleId = $roleObj ? $roleObj->id : null;
+
         $validated = $request->validate([
             'in_game_name' => 'required|string|max:20',
             'main_role' => ['required', Rule::in($validRoles)],
+            'main_role_id' => $roleId,
             'second_role' => ['nullable', Rule::in($validRoles)],
             'third_role'  => ['nullable', Rule::in($validRoles)],
             'fourth_role' => ['nullable', Rule::in($validRoles)],
@@ -226,28 +230,24 @@ class LinkController extends Controller
     public function moveMember(Request $request, $slug)
     {
         $link = SharedLink::where('slug', $slug)->firstOrFail();
-
+        
         if ($link->status === 'completed') {
-            return back()->with('error', 'Bu etkinlik tamamlandı (Arşivlendi). Değişiklik yapılamaz.');
+            return response()->json(['error' => 'Bu etkinlik tamamlandı (Arşivlendi). Değişiklik yapılamaz.'], 403);
         }
 
         $attendee = $link->attendees()->where('id', $request->attendee_id)->firstOrFail();
-
         $user = auth()->user();
 
         $isManager = in_array($user->role, ['admin', 'content-creator']) || $link->creator_id == $user->id;
-
         $isMovingSelf = $attendee->user_id == $user->id;
 
         if (!$isManager) {
             if ($link->type === 'cta') {
                 return response()->json(['error' => 'Yetkisiz işlem: CTA modunda sadece Caller yerleşim yapabilir.'], 403);
             }
-
             if ($link->type === 'content' && !$isMovingSelf) {
                 return response()->json(['error' => 'Sadece kendi yerini değiştirebilirsin.'], 403);
             }
-
 
             if ($request->target_slot > 0) {
                 $isSlotTaken = $link->attendees()->where('slot_index', $request->target_slot)->exists();
@@ -258,42 +258,57 @@ class LinkController extends Controller
         }
 
         $targetSlot = $request->target_slot;
-
         $assignedRole = $attendee->main_role;
         $isForced = false;
 
         if ($targetSlot > 0) {
-            $snapshotIndex = $targetSlot;
+            $snapshotData = $link->template_snapshot[$targetSlot] ?? null;
 
-            $requiredRole = $link->template_snapshot[$snapshotIndex]['role'] ?? null;
+            $requiredRoleName = $snapshotData['role'] ?? null;
+            $slotBuildId = $snapshotData['build_id'] ?? null;
 
-            if ($requiredRole && $requiredRole !== 'Any' && $requiredRole !== 'Bomb Squad / Flex') {
-                $roles = [
+            $matchFound = false;
+
+            if ($slotBuildId && $attendee->main_role_id) {
+                $targetBuild = SavedBuild::find($slotBuildId);
+
+                if ($targetBuild && $targetBuild->weapon_id == $attendee->main_role_id) {
+                    $matchFound = true;
+                    $assignedRole = $attendee->main_role;
+                }
+            }
+
+            if (!$matchFound && $requiredRoleName && $requiredRoleName !== 'Any' && $requiredRoleName !== 'Bomb Squad / Flex') {
+
+                $cleanRequired = preg_replace('/(\s-\s.*|\sCTA|\sMass|\sSwap)/i', '', $requiredRoleName);
+                $cleanRequired = trim($cleanRequired);
+
+                $userRoles = [
                     $attendee->main_role,
                     $attendee->second_role,
                     $attendee->third_role,
                     $attendee->fourth_role
                 ];
 
-                $matchFound = false;
-                foreach ($roles as $role) {
-                    if ($role && (stripos($requiredRole, $role) !== false || stripos($role, $requiredRole) !== false)) {
+                foreach ($userRoles as $role) {
+                    if (!$role) continue;
+
+                    if (stripos($role, $cleanRequired) !== false || stripos($cleanRequired, $role) !== false || stripos($role, $requiredRoleName) !== false) {
                         $assignedRole = $role;
                         $matchFound = true;
                         break;
                     }
                 }
+            }
 
-                if (!$matchFound) {
-                    $assignedRole = $requiredRole;
-                    $isForced = true;
-                }
+            if (!$matchFound && $requiredRoleName && $requiredRoleName !== 'Any' && $requiredRoleName !== 'Bomb Squad / Flex') {
+                $assignedRole = $requiredRoleName;
+                $isForced = true;
             }
         }
 
 
         $existingPerson = $link->attendees()->where('slot_index', $targetSlot)->first();
-
         if ($targetSlot > 0 && $existingPerson) {
             $existingPerson->update(['slot_index' => null]);
         }
