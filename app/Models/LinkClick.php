@@ -7,5 +7,5 @@ use Illuminate\Database\Eloquent\Model;
 class LinkClick extends Model
 {
     protected $guarded = [];
-    public $timestamps = false; // Sadece clicked_at kullanacağız
+    public $timestamps = false;
 }

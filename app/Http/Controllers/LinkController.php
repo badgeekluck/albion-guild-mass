@@ -25,7 +25,6 @@ class LinkController extends Controller
 
     public function store(Request $request)
     {
-        // Güvenlik kontrolünü kendi mantığına göre düzenleyebilirsin
         // if ($request->user()->role !== 'admin') { ... }
 
         $request->validate(['url' => 'required|url']);
@@ -140,7 +139,8 @@ class LinkController extends Controller
 
             if ($availableRoles->isEmpty()) {
                 $availableRoles = GameRole::whereIn('category', ['Tank', 'Healer', 'DPS', 'Support'])
-                    ->orderBy('name', 'asc')->get();
+                    ->orderBy('name', 'asc')
+                    ->get();
             }
         } else {
             $availableRoles = GameRole::whereIn('category', ['Tank', 'Healer', 'DPS', 'Support'])
@@ -224,7 +224,6 @@ class LinkController extends Controller
         $isMovingSelf = $attendee->user_id == $user->id;
 
         if (!$isManager) {
-            // 1. CTA Partisi: Üyeler ASLA dokunamaz
             if ($link->type === 'cta') {
                 return response()->json(['error' => 'Yetkisiz işlem: CTA modunda sadece Caller yerleşim yapabilir.'], 403);
             }
