@@ -202,22 +202,25 @@ class LinkController extends Controller
             return back()->with('error', 'Bu etkinlik tamamlandı (Arşivlendi). Değişiklik yapılamaz.');
         }
 
-        $validRoles = GameRole::pluck('name')->toArray();
+        $validRoles = \App\Models\GameRole::pluck('name')->toArray();
         $validRoles[] = 'Fill';
-
-        $roleObj = \App\Models\GameRole::where('name', $request->main_role)->first();
-        $roleId = $roleObj ? $roleObj->id : null;
 
         $validated = $request->validate([
             'in_game_name' => 'required|string|max:20',
             'main_role' => ['required', Rule::in($validRoles)],
-            'main_role_id' => $roleId,
             'second_role' => ['nullable', Rule::in($validRoles)],
             'third_role'  => ['nullable', Rule::in($validRoles)],
             'fourth_role' => ['nullable', Rule::in($validRoles)],
         ], [
             'main_role.in' => 'Seçtiğiniz rol geçerli değil.',
         ]);
+
+        $roleObj = \App\Models\GameRole::where('name', $request->main_role)->first();
+        $roleId = $roleObj ? $roleObj->id : null;
+
+
+        $validated['main_role_id'] = $roleId;
+
 
         $link->attendees()->updateOrCreate(
             ['user_id' => auth()->id()],
@@ -230,7 +233,7 @@ class LinkController extends Controller
     public function moveMember(Request $request, $slug)
     {
         $link = SharedLink::where('slug', $slug)->firstOrFail();
-        
+
         if ($link->status === 'completed') {
             return response()->json(['error' => 'Bu etkinlik tamamlandı (Arşivlendi). Değişiklik yapılamaz.'], 403);
         }
