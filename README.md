@@ -134,7 +134,7 @@ Setup is ready! Visit in your browser: http://localhost:8000
 ## Credits
 
 - [Harun Baş](https://github.com/badgeekluck)
-- [Mircea Maldo](https://github.com/mirceamoldo)
+- [Mircea Moldo](https://github.com/mirceamoldo)
 
 ## New Features
 
