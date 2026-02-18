@@ -224,7 +224,7 @@
         /* Header */
         .header-wrapper{max-width: 1600px; margin: 0 auto 20px auto; background: #25252e; padding: 15px; border-radius: 8px; border: 1px solid #333; display: flex; gap: 30px; align-items: center; color: #ccc;}
         .header-wrapper .header-item{display: flex; align-items: center; gap: 10px;}
-        .header-wrapper .header-auth{margin-left: 20px; padding-left: 20px; border-left: 1px solid #444; display: flex; flex-direction: column; align-items: flex-end;}
+        .header-wrapper .header-auth{margin-left: auto; padding-left: 20px; border-left: 1px solid #444; display: flex; flex-direction: column; align-items: flex-end;}
         .header-wrapper .header-login{margin-left: 20px; padding-left: 20px; border-left: 1px solid #444;}
         .header-wrapper .header-icon{padding: 8px; border-radius: 6px;}
 
@@ -407,6 +407,15 @@
                     — Standard Setup
                 @endif
     </span>
+            <span>
+                <span style="font-size: 11px; text-transform: uppercase; font-weight: bold;">Party Type</span>
+                <span class="header-icon" style="background: {{ $link->type == 'content' ? '#ec4899' : '#8b5cf6' }};">
+                {{ $link->type == 'content' ? '⚔️' : '📢' }}
+            </span>
+                <span style="font-size: 18px; font-weight: bold; color: white; text-transform: uppercase;">
+                    {{ $link->type == 'content' ? 'PvP Content' : 'CTA (Mass)' }}
+                </span>
+            </span>
             <span style="font-size: 14px; color: #888; font-weight: normal;">({{ $maxSlots }} Slots)</span>
         </h2>
         @if(auth()->check() && (auth()->user()->role === 'admin' || auth()->id() === $link->creator_id))
