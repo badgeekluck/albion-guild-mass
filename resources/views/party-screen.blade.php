@@ -328,6 +328,13 @@
     </div>
 
     <div class="header-item" style="position: relative; cursor: pointer;" id="viewer-container">
+        <div class="header-icon" style="background: #f59e0b;">⏳</div>
+        <div>
+            <div style="font-size: 11px; text-transform: uppercase; font-weight: bold;">Waitlist</div>
+            <div style="font-size: 18px; font-weight: bold; color: white;">
+                {{ $link->attendees->whereNull('slot_index')->count() }}
+            </div>
+        </div>
         <div class="header-icon" style="background: #10b981; animation: pulse 2s infinite;">
             👁️
         </div>
