@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Party: {{ $link->slug }}</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #1e1e24; color: #e2e2e2; padding: 20px; margin: 0; }
 
@@ -326,25 +327,37 @@
         </div>
     </div>
 
-    <div class="header-item">
-        <div class="header-icon" style="background: #f59e0b;">⏳</div>
-        <div>
-            <div style="font-size: 11px; text-transform: uppercase; font-weight: bold;">Waitlist</div>
-            <div style="font-size: 18px; font-weight: bold; color: white;">
-                {{ $link->attendees->whereNull('slot_index')->count() }}
-            </div>
+    <div class="header-item" style="position: relative; cursor: pointer;" id="viewer-container">
+        <div class="header-icon" style="background: #10b981; animation: pulse 2s infinite;">
+            👁️
         </div>
-    </div>
-    <div class="header-item" style="margin-left:auto;">
-        <div class="header-icon" style="background: #10b981;">👁️</div>
+
         <div>
             <div style="font-size: 11px; text-transform: uppercase; font-weight: bold;">Live Viewers</div>
             <div style="font-size: 18px; font-weight: bold; color: white;">
-                {{ $viewerCount ?? 1 }}
+                <span id="live-count">0</span>
             </div>
         </div>
-    </div>
 
+        <div id="viewer-list-tooltip" style="
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: #25252e;
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 10px;
+        min-width: 150px;
+        z-index: 100;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        margin-top: 10px;
+    ">
+            <div style="font-size: 10px; color: #888; margin-bottom: 5px; border-bottom: 1px solid #444; padding-bottom: 3px;">ONLINE USERS</div>
+            <ul id="viewer-names" style="list-style: none; padding: 0; margin: 0; font-size: 12px; color: #ccc; max-height: 200px; overflow-y: auto;">
+            </ul>
+        </div>
+    </div>
     @auth
         <div class="header-auth">
             <div style="font-size: 12px; color: #ccc; margin-bottom: 6px;">
@@ -757,6 +770,97 @@
             // İkon yoksa placeholder
             el.innerHTML = `<span class="eq-label" style="position:static; font-size:12px; opacity:0.3;">EMPTY</span>`;
         }
+    }
+
+    // Basit Hover Efekti
+    const container = document.getElementById('viewer-container');
+    const tooltip = document.getElementById('viewer-list-tooltip');
+
+    container.addEventListener('mouseenter', () => { tooltip.style.display = 'block'; });
+    container.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // Echo'nun (Reverb) yüklü olup olmadığını kontrol et
+        if (typeof Echo !== 'undefined') {
+            console.log('Connecting to Reverb...');
+
+            Echo.join(`party.{{ $link->slug }}`)
+                .here((users) => {
+                    // Odaya ilk girdiğimizde kimler var?
+                    console.log('Current users:', users);
+                    updateViewerList(users);
+                })
+                .joining((user) => {
+                    // Yeni biri geldiğinde
+                    console.log('User joined:', user.name);
+                    addViewer(user);
+                })
+                .leaving((user) => {
+                    // Biri çıktığında
+                    console.log('User left:', user.name);
+                    removeViewer(user);
+                })
+                .error((error) => {
+                    console.error('Reverb Error:', error);
+                });
+        } else {
+            console.error('Laravel Echo yüklenemedi! Lütfen vite satırını eklediğinden emin ol.');
+        }
+    });
+
+    // --- LİSTE GÜNCELLEME FONKSİYONLARI ---
+    let currentUsers = [];
+
+    function updateViewerList(users) {
+        currentUsers = users;
+        renderViewers();
+    }
+
+    function addViewer(user) {
+        // Eğer listede yoksa ekle
+        if (!currentUsers.find(u => u.id === user.id)) {
+            currentUsers.push(user);
+            renderViewers();
+        }
+    }
+
+    function removeViewer(user) {
+        currentUsers = currentUsers.filter(u => u.id !== user.id);
+        renderViewers();
+    }
+
+    function renderViewers() {
+        // 1. Sayıyı Güncelle
+        const countEl = document.getElementById('live-count');
+        if(countEl) countEl.innerText = currentUsers.length;
+
+        // 2. Listeyi Temizle ve Yeniden Yaz
+        const listEl = document.getElementById('viewer-names');
+        if(!listEl) return;
+
+        listEl.innerHTML = '';
+
+        if (currentUsers.length === 0) {
+            listEl.innerHTML = '<li style="color: #666; font-style: italic; padding: 5px;">No active users</li>';
+            return;
+        }
+
+        currentUsers.forEach(user => {
+            const li = document.createElement('li');
+            li.style.padding = '6px 0';
+            li.style.borderBottom = '1px solid #333';
+            li.style.display = 'flex';
+            li.style.alignItems = 'center';
+            li.style.gap = '8px';
+
+            // Yeşil nokta ve İsim
+            li.innerHTML = `
+                <span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 5px #10b981; display: inline-block;"></span>
+                <span style="font-weight: bold; color: #e2e2e2; font-size: 13px;">${user.name}</span>
+            `;
+            listEl.appendChild(li);
+        });
     }
 </script>
 
