@@ -202,8 +202,10 @@ class LinkController extends Controller
             return back()->with('error', 'Bu etkinlik tamamlandı (Arşivlendi). Değişiklik yapılamaz.');
         }
 
-        $validRoles = \App\Models\GameRole::pluck('name')->toArray();
-        $validRoles[] = 'Fill';
+        $validRoles = GameRole::pluck('name')->toArray();
+
+        $extraRoles = ['Fill', 'Fill Tank', 'Fill DPS', 'Bombsquad'];
+        $validRoles = array_merge($validRoles, $extraRoles);
 
         $validated = $request->validate([
             'in_game_name' => 'required|string|max:20',
@@ -215,13 +217,12 @@ class LinkController extends Controller
             'main_role.in' => 'Seçtiğiniz rol geçerli değil.',
         ]);
 
-        $roleObj = \App\Models\GameRole::where('name', $request->main_role)->first();
+        $roleObj = GameRole::where('name', $request->main_role)->first();
         $roleId = $roleObj ? $roleObj->id : null;
-
 
         $validated['main_role_id'] = $roleId;
 
-
+        // Kayıt oluştur veya güncelle
         $link->attendees()->updateOrCreate(
             ['user_id' => auth()->id()],
             $validated
@@ -235,12 +236,13 @@ class LinkController extends Controller
         $link = SharedLink::where('slug', $slug)->firstOrFail();
 
         if ($link->status === 'completed') {
-            return response()->json(['error' => 'Bu etkinlik tamamlandı (Arşivlendi). Değişiklik yapılamaz.'], 403);
+            return response()->json(['error' => 'Bu etkinlik tamamlandı. Değişiklik yapılamaz.'], 403);
         }
 
         $attendee = $link->attendees()->where('id', $request->attendee_id)->firstOrFail();
         $user = auth()->user();
 
+        // Yönetici kontrolü
         $isManager = in_array($user->role, ['admin', 'content-creator']) || $link->creator_id == $user->id;
         $isMovingSelf = $attendee->user_id == $user->id;
 
@@ -251,66 +253,106 @@ class LinkController extends Controller
             if ($link->type === 'content' && !$isMovingSelf) {
                 return response()->json(['error' => 'Sadece kendi yerini değiştirebilirsin.'], 403);
             }
-
             if ($request->target_slot > 0) {
                 $isSlotTaken = $link->attendees()->where('slot_index', $request->target_slot)->exists();
                 if ($isSlotTaken) {
-                    return response()->json(['error' => 'Bu slot dolu! Sadece boş slotlara geçebilirsin.'], 403);
+                    return response()->json(['error' => 'Bu slot dolu!'], 403);
                 }
             }
         }
 
         $targetSlot = $request->target_slot;
-        $assignedRole = $attendee->main_role;
+        $assignedRole = $attendee->main_role; // Varsayılan: Kendi rolü
         $isForced = false;
 
-        if ($targetSlot > 0) {
+        // --- BOMBSQUAD KORUMASI (YENİ) ---
+        // Eğer adam Bombsquad ise, nereye koyarsak koyalım rolü "Bombsquad" kalsın.
+        if ($attendee->main_role === 'Bombsquad') {
+            $assignedRole = 'Bombsquad';
+            // Bombsquad her yere girebilir, uyarı (kırmızı ışık) vermesin:
+            $isForced = false;
+        }
+        // --- NORMALLER İÇİN SLOT KONTROLÜ ---
+        elseif ($targetSlot > 0) {
             $snapshotData = $link->template_snapshot[$targetSlot] ?? null;
 
             $requiredRoleName = $snapshotData['role'] ?? null;
-            $slotBuildId = $snapshotData['build_id'] ?? null;
+            $requiredType = isset($snapshotData['type']) ? strtolower($snapshotData['type']) : 'any';
 
             $matchFound = false;
 
+            // 1. Build ID Eşleşmesi
+            $slotBuildId = $snapshotData['build_id'] ?? null;
             if ($slotBuildId && $attendee->main_role_id) {
-                $targetBuild = SavedBuild::find($slotBuildId);
-
+                $targetBuild = \App\Models\SavedBuild::find($slotBuildId);
                 if ($targetBuild && $targetBuild->weapon_id == $attendee->main_role_id) {
                     $matchFound = true;
                     $assignedRole = $attendee->main_role;
                 }
             }
 
-            if (!$matchFound && $requiredRoleName && $requiredRoleName !== 'Any' && $requiredRoleName !== 'Bomb Squad / Flex') {
+            // 2. Rol / Fill Kontrolü
+            if (!$matchFound && $requiredRoleName && $requiredRoleName !== 'Any') {
 
-                $cleanRequired = preg_replace('/(\s-\s.*|\sCTA|\sMass|\sSwap)/i', '', $requiredRoleName);
-                $cleanRequired = trim($cleanRequired);
+                // Ekstra Slot (Flex) Kontrolü
+                $isExtraSlot = ($requiredRoleName === 'Bomb Squad / Flex');
 
-                $userRoles = [
-                    $attendee->main_role,
-                    $attendee->second_role,
-                    $attendee->third_role,
-                    $attendee->fourth_role
-                ];
+                if ($isExtraSlot) {
+                    $matchFound = true;
+                    $assignedRole = 'Bomb Squad / Flex';
+                } else {
+                    // İsim Temizliği
+                    $cleanRequired = preg_replace('/(\s-\s.*|\sCTA|\sMass|\sSwap)/i', '', $requiredRoleName);
+                    $cleanRequired = trim($cleanRequired);
 
-                foreach ($userRoles as $role) {
-                    if (!$role) continue;
+                    $userRoles = [
+                        $attendee->main_role,
+                        $attendee->second_role,
+                        $attendee->third_role,
+                        $attendee->fourth_role
+                    ];
 
-                    if (stripos($role, $cleanRequired) !== false || stripos($cleanRequired, $role) !== false || stripos($role, $requiredRoleName) !== false) {
-                        $assignedRole = $role;
-                        $matchFound = true;
-                        break;
+                    foreach ($userRoles as $role) {
+                        if (!$role) continue;
+
+                        // A) İsim Benzerliği
+                        if (stripos($role, $cleanRequired) !== false || stripos($cleanRequired, $role) !== false || stripos($role, $requiredRoleName) !== false) {
+                            $assignedRole = $role;
+                            $matchFound = true;
+                            break;
+                        }
+
+                        // B) FILL MANTIĞI
+                        // 1. "Fill" -> Her yere okey, Slot ismini alır.
+                        if ($role === 'Fill') {
+                            $assignedRole = $requiredRoleName;
+                            $matchFound = true;
+                            break;
+                        }
+                        // 2. "Fill Tank" -> Sadece Tank slotuna
+                        if ($role === 'Fill Tank' && $requiredType === 'tank') {
+                            $assignedRole = $requiredRoleName;
+                            $matchFound = true;
+                            break;
+                        }
+                        // 3. "Fill DPS" -> Sadece DPS slotuna
+                        if ($role === 'Fill DPS' && $requiredType === 'dps') {
+                            $assignedRole = $requiredRoleName;
+                            $matchFound = true;
+                            break;
+                        }
                     }
                 }
             }
 
+            // 3. Eşleşme Yoksa (Zorla Oturtma)
             if (!$matchFound && $requiredRoleName && $requiredRoleName !== 'Any' && $requiredRoleName !== 'Bomb Squad / Flex') {
-                $assignedRole = $requiredRoleName;
-                $isForced = true;
+                $assignedRole = $requiredRoleName; // Slotun adını ver
+                $isForced = true; // Uyarı ver
             }
         }
 
-
+        // Eski yerdeki kişiyi kaldır
         $existingPerson = $link->attendees()->where('slot_index', $targetSlot)->first();
         if ($targetSlot > 0 && $existingPerson) {
             $existingPerson->update(['slot_index' => null]);
@@ -321,6 +363,8 @@ class LinkController extends Controller
             'assigned_role' => $assignedRole,
             'is_forced' => $isForced
         ]);
+
+        broadcast(new \App\Events\PartyUpdated($link));
 
         return response()->json(['success' => true]);
     }
