@@ -10,7 +10,10 @@ class BuildController extends Controller
 {
     public function index()
     {
-        $builds = SavedBuild::with('creator')->orderBy('updated_at', 'desc')->get();
+        $builds = SavedBuild::with(['creator', 'updater', 'weapon'])
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
         return view('admin.build.index', compact('builds'));
     }
 
@@ -80,7 +83,7 @@ class BuildController extends Controller
 
         SavedBuild::create($data);
 
-        return redirect()->route('builds.index')->with('success', 'Build başarıyla kaydedildi! 🛡️');
+        return redirect()->route('admin.build.index')->with('success', 'Build başarıyla kaydedildi! 🛡️');
     }
 
     public function destroy($id)
@@ -142,7 +145,11 @@ class BuildController extends Controller
         ]);
 
         $build = SavedBuild::findOrFail($id);
-        $build->update($request->all());
+
+        $data = $request->all();
+        $data['updated_by'] = auth()->id();
+
+        $build->update($data);
 
         return redirect()->route('builds.index')->with('success', 'Build başarıyla güncellendi! ✨');
     }

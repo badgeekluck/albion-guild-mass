@@ -760,6 +760,8 @@
                         <div class="role-tags-wrapper">
                             <span class="role-tag tag-main">{{ $att->main_role }}</span>
                             @if($att->second_role) <span class="role-tag tag-sub">{{ $att->second_role }}</span> @endif
+                            @if($att->third_role) <span class="role-tag tag-sub">{{ $att->third_role }}</span> @endif
+                            @if($att->fourth_role) <span class="role-tag tag-sub">{{ $att->fourth_role }}</span> @endif
                         </div>
                     </div>
                 @endif
@@ -877,15 +879,21 @@
                     let exclusiveRole = null;
                     let exclusiveIndex = -1;
                     let selectedValues = [];
+                    let hasFill = false;
 
                     roleSelects.forEach((select, index) => {
                         const val = select.value;
                         if (val && val.trim() !== '') {
                             selectedCount++;
                             selectedValues.push(val);
-                            if (['Bombsquad', 'Fill', 'Fill Tank', 'Fill DPS'].includes(val)) {
+
+                            if (['Bombsquad'].includes(val)) {
                                 exclusiveRole = val;
                                 exclusiveIndex = index;
+                            }
+
+                            if (['Fill', 'Fill Tank', 'Fill DPS'].includes(val)) {
+                                hasFill = true;
                             }
                         }
                     });
@@ -907,11 +915,16 @@
 
                     let hasDuplicates = new Set(selectedValues).size !== selectedValues.length;
 
+
                     let isValid = false;
                     if (exclusiveRole) {
                         isValid = true;
-                    } else if (selectedCount >= 2 && !hasDuplicates) {
-                        isValid = true;
+                    } else if (!hasDuplicates) {
+                        if (selectedCount >= 2) {
+                            isValid = true;
+                        } else if (selectedCount === 1 && hasFill) {
+                            isValid = true;
+                        }
                     }
 
                     if (isValid) {
@@ -923,7 +936,7 @@
                         submitBtn.style.opacity = '0.5';
                         if (hasDuplicates) {
                             submitBtn.innerText = "⚠️ Duplicate Roles Selected";
-                        } else if(selectedCount === 1) {
+                        } else if (selectedCount === 1 && !hasFill) {
                             submitBtn.innerText = "Select 1 More Role";
                         } else {
                             submitBtn.innerText = "Select Roles (Min 2)";

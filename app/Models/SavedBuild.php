@@ -45,4 +45,9 @@ class SavedBuild extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
 }
