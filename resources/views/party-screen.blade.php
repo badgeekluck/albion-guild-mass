@@ -855,7 +855,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
 
-            // --- CTA RULE VALIDATION LOGIC ---
             const isCta = "{{ $link->type }}" !== 'content';
 
             const roleSelects = [
@@ -867,26 +866,23 @@
             const submitBtn = document.getElementById('joinSubmitBtn');
 
             function checkRules(e) {
-
-                // 1. TEMİZLİK: Eğer değer "[Tank] 1H Mace" gibiyse, "[Tank] " kısmını sil.
                 roleSelects.forEach(select => {
                     if (select.value && select.value.indexOf('] ') > -1) {
-                        // Kullanıcı seçtiği an [Tank] kısmını kaldırıp sadece rol adını bırakıyoruz
                         select.value = select.value.split('] ')[1];
                     }
                 });
 
-                // Sadece CTA ise kuralları işlet
                 if (isCta) {
                     let selectedCount = 0;
                     let exclusiveRole = null;
                     let exclusiveIndex = -1;
+                    let selectedValues = [];
 
-                    // 2. Exclusive Rol Kontrolü
                     roleSelects.forEach((select, index) => {
                         const val = select.value;
                         if (val && val.trim() !== '') {
                             selectedCount++;
+                            selectedValues.push(val);
                             if (['Bombsquad', 'Fill', 'Fill Tank', 'Fill DPS'].includes(val)) {
                                 exclusiveRole = val;
                                 exclusiveIndex = index;
@@ -894,10 +890,8 @@
                         }
                     });
 
-                    // 3. Kilit ve Temizlik İşlemi
                     roleSelects.forEach((select, index) => {
                         select.classList.remove('exclusive-active');
-
                         if (exclusiveRole) {
                             if (index === exclusiveIndex) {
                                 select.classList.add('exclusive-active');
@@ -911,15 +905,15 @@
                         }
                     });
 
-                    // 4. Validasyon
+                    let hasDuplicates = new Set(selectedValues).size !== selectedValues.length;
+
                     let isValid = false;
                     if (exclusiveRole) {
                         isValid = true;
-                    } else if (selectedCount >= 2) {
+                    } else if (selectedCount >= 2 && !hasDuplicates) {
                         isValid = true;
                     }
 
-                    // 5. Buton Durumu
                     if (isValid) {
                         submitBtn.disabled = false;
                         submitBtn.innerText = "Sign Up";
@@ -927,23 +921,44 @@
                     } else {
                         submitBtn.disabled = true;
                         submitBtn.style.opacity = '0.5';
-                        if(selectedCount === 1) submitBtn.innerText = "Select 1 More Role";
-                        else submitBtn.innerText = "Select Roles (Min 2)";
+                        if (hasDuplicates) {
+                            submitBtn.innerText = "⚠️ Duplicate Roles Selected";
+                        } else if(selectedCount === 1) {
+                            submitBtn.innerText = "Select 1 More Role";
+                        } else {
+                            submitBtn.innerText = "Select Roles (Min 2)";
+                        }
                     }
                 }
             }
 
             roleSelects.forEach(select => {
                 if(select) {
-                    // 'input' olayı hem yazarken hem seçince çalışır
                     select.addEventListener('input', checkRules);
                     select.addEventListener('change', checkRules);
                 }
             });
 
-            checkRules(); // Başlangıç kontrolü
+            checkRules();
 
-            // --- DRAG AND DROP & MODAL JS ---
+            window.refreshBoard = function() {
+                fetch(window.location.href)
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+
+                        const newGrid = doc.querySelector('.parties-grid');
+                        if (newGrid) document.querySelector('.parties-grid').innerHTML = newGrid.innerHTML;
+
+                        const newWaitlist = doc.querySelector('.waitlist-area');
+                        if (newWaitlist) document.querySelector('.waitlist-area').innerHTML = newWaitlist.innerHTML;
+
+                        const newHeader = doc.querySelector('.roster-area h2');
+                        if (newHeader) document.querySelector('.roster-area h2').innerHTML = newHeader.innerHTML;
+                    });
+            }
+
             window.drag = function(ev, attendeeId) {
                 if (ev.target.getAttribute('draggable') !== 'true') { ev.preventDefault(); return false; }
                 ev.dataTransfer.setData("attendeeId", attendeeId);
@@ -956,10 +971,17 @@
                 var attendeeId = ev.dataTransfer.getData("attendeeId");
                 var slug = "{{ $link->slug }}";
                 var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
                 fetch(`/go/${slug}/move`, {
                     method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': token},
                     body: JSON.stringify({ attendee_id: attendeeId, target_slot: slotIndex })
-                }).then(response => response.json()).then(data => { if(data.success) location.reload(); else alert(data.error || 'Error'); });
+                }).then(response => response.json()).then(data => {
+                    if(!data.success) {
+                        alert(data.error || 'Error');
+                    } else {
+                        refreshBoard();
+                    }
+                });
             }
 
             window.openBuildModal = function(buildData, roleName, notes) {
@@ -996,6 +1018,7 @@
                 else el.innerHTML = `<span class="eq-label" style="position:static; font-size:12px; opacity:0.3;">EMPTY</span>`;
             }
 
+            // --- VIEWER HOVER EFEKTİ ---
             const container = document.getElementById('viewer-container');
             const tooltip = document.getElementById('viewer-list-tooltip');
             let hideTimeout;
@@ -1006,11 +1029,8 @@
                     tooltip.style.display = 'block';
                 }
                 function hideTooltip() {
-                    hideTimeout = setTimeout(() => {
-                        tooltip.style.display = 'none';
-                    }, 300);
+                    hideTimeout = setTimeout(() => { tooltip.style.display = 'none'; }, 300);
                 }
-
                 container.addEventListener('mouseenter', showTooltip);
                 container.addEventListener('mouseleave', hideTooltip);
                 tooltip.addEventListener('mouseenter', showTooltip);
@@ -1023,8 +1043,7 @@
                     .joining((user) => { addViewer(user); })
                     .leaving((user) => { removeViewer(user); })
                     .listen('PartyUpdated', (e) => {
-                        console.log('Parti güncellendi, ekran yenileniyor...');
-                        window.location.reload();
+                        refreshBoard();
                     });
             }
         });
@@ -1033,22 +1052,16 @@
         function updateViewerList(users) { currentUsers = users; renderViewers(); }
         function addViewer(user) { if (!currentUsers.find(u => u.id === user.id)) { currentUsers.push(user); renderViewers(); } }
         function removeViewer(user) { currentUsers = currentUsers.filter(u => u.id !== user.id); renderViewers(); }
-
         function renderViewers() {
             const countEl = document.getElementById('live-count');
             if(countEl) countEl.innerText = currentUsers.length;
             const listEl = document.getElementById('viewer-names');
             if(!listEl) return;
             listEl.innerHTML = '';
-
-            if (currentUsers.length === 0) {
-                listEl.innerHTML = '<li style="width:100%; text-align:center; color:#666; font-style:italic;">No active users</li>';
-                return;
-            }
-
+            if (currentUsers.length === 0) { listEl.innerHTML = '<li style="width:100%; text-align:center; color:#666; font-style:italic;">No active users</li>'; return; }
             currentUsers.forEach(user => {
                 const li = document.createElement('li');
-                li.className = 'viewer-tag'; // Yukarıda yazdığımız CSS sınıfı
+                li.className = 'viewer-tag';
                 li.innerHTML = `<span style="width:6px;height:6px;background:#10b981;border-radius:50%;box-shadow:0 0 5px #10b981;"></span><span style="font-weight:600;">${user.name}</span>`;
                 listEl.appendChild(li);
             });
