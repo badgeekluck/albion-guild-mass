@@ -319,18 +319,17 @@
         #eq-offhand { grid-column: 3; grid-row: 2; }
         #eq-shoe { grid-column: 2; grid-row: 3; }
 
-        /* CANLI İZLEYİCİ TOOLTIP TASARIMI (YATAY YAPILANDIRMA) */
+        /* CANLI İZLEYİCİ TOOLTIP TASARIMI (SADECE YATAY - SINGLE LINE) */
         #viewer-list-tooltip {
             display: none;
             position: absolute;
-            top: 110%; /* Listeyi biraz aşağı iter, butonla çakışmasını önler */
+            top: 110%;
             right: 0;
             background: #25252e;
             border: 1px solid #444;
             border-radius: 8px;
             padding: 15px;
-            min-width: 300px; /* Yatay liste için genişliği artırdık */
-            max-width: 400px;
+            max-width: 500px; /* Yaklaşık 5-6 isim sığacak genişlik */
             z-index: 1000;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
@@ -339,18 +338,19 @@
             list-style: none;
             padding: 0;
             margin: 0;
-            max-height: 250px;
-            overflow-y: auto;
+            padding-bottom: 8px; /* Scroll bar'ın yazılara değmemesi için biraz boşluk */
 
-            /* İŞTE LİSTEYİ YATAY YAPAN KISIM BURASI */
+            /* YATAY LİSTE (ASLA ALT SATIRA GEÇMEZ) */
             display: flex;
-            flex-wrap: wrap; /* İsimler sığmazsa alt satıra geçer */
-            gap: 8px; /* İsimler arası boşluk */
+            flex-wrap: nowrap; /* Alt satıra geçmeyi engeller */
+            overflow-x: auto;  /* Sığmazsa YATAY scroll çıkarır */
+            overflow-y: hidden;
+            gap: 8px;
         }
 
-        /* Scrollbar (Zorunlu değil ama güzel durur) */
-        #viewer-names::-webkit-scrollbar { width: 4px; }
-        #viewer-names::-webkit-scrollbar-track { background: #1e1e24; }
+        /* YATAY Scrollbar Tasarımı (Genişlik yerine Yükseklik verilir) */
+        #viewer-names::-webkit-scrollbar { height: 6px; }
+        #viewer-names::-webkit-scrollbar-track { background: #1e1e24; border-radius: 4px; }
         #viewer-names::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
 
         /* HER BİR İSİM KUTUSU (TAG) */
@@ -366,6 +366,10 @@
             gap: 6px;
             transition: all 0.2s;
             cursor: default;
+
+            /* Kutuların sıkışmasını ve içindeki yazının bölünmesini engeller */
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .viewer-tag:hover {
@@ -373,6 +377,39 @@
             border-color: #6366f1;
             color: white;
         }
+
+        /* PARTY SAYACI İÇİN CSS */
+        .party-count-badge {
+            font-size: 11px;
+            background: #1e1e24;
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            margin-left: 8px;
+            color: #fbbf24; /* Dikkat çeksin diye sarımtırak */
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        /* BOŞ SLOTLAR İÇİN KESİK ÇİZGİLİ / ŞEFFAF TASARIM */
+        .is-empty-slot {
+            background-color: rgba(25, 25, 30, 0.4) !important; /* İçi boş (koyu) görünsün */
+            border: 1px dashed #555 !important; /* Çerçevesi kesik çizgili olsun */
+            opacity: 0.7; /* Biraz soluk dursun */
+        }
+
+        /* Boş slotlara gelince parlasın */
+        .is-empty-slot:hover {
+            opacity: 1;
+            border-color: #6366f1 !important;
+            background-color: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        /* Boş olsa bile hangi rol olduğunu soldaki kalın çizgiden anlasınlar */
+        .is-empty-slot.role-tank { border-left: 3px solid #2563eb !important; }
+        .is-empty-slot.role-heal { border-left: 3px solid #16a34a !important; }
+        .is-empty-slot.role-dps  { border-left: 3px solid #dc2626 !important; }
+        .is-empty-slot.role-supp { border-left: 3px solid #d97706 !important; }
     </style>
 </head>
 <body>
@@ -522,14 +559,25 @@
         <div class="parties-grid">
             @for ($p = 0; $p < $partyCount; $p++)
                 <div class="party-column">
-                    <div class="party-header">Party {{ $p + 1 }}</div>
+
+                    @php
+                        // Bu parti için başlangıç ve bitiş slot numaraları
+                        $start = ($p * 20) + 1;
+                        $end = min(($p * 20) + 20, $maxSlots);
+                        $totalInThisParty = $end - $start + 1;
+
+                        // Sadece bu partideki DOLU slotları say
+                        $filledInThisParty = $link->attendees->filter(function($att) use ($start, $end) {
+                            return $att->slot_index >= $start && $att->slot_index <= $end;
+                        })->count();
+                    @endphp
+
+                    <div class="party-header">
+                        Party {{ $p + 1 }}
+                        <span class="party-count-badge">{{ $filledInThisParty }} / {{ $totalInThisParty }}</span>
+                    </div>
 
                     <div class="slots-container">
-                        @php
-                            $start = ($p * 20) + 1;
-                            $end = min(($p * 20) + 20, $maxSlots);
-                        @endphp
-
                         @for ($i = $start; $i <= $end; $i++)
                             @php
                                 $attendee = $link->attendees->where('slot_index', $i)->first();
@@ -561,6 +609,11 @@
                                 }
 
                                 if($isItMe) $slotClass .= ' my-own-slot';
+
+                                // YENİ: EĞER SLOT BOŞSA EMPTY CLASS'INI EKLE
+                                if(!$attendee) {
+                                    $slotClass .= ' is-empty-slot';
+                                }
                             @endphp
 
                             <div class="party-slot {{ $slotClass }}"
@@ -585,9 +638,9 @@
                                              onclick="event.stopPropagation()">
 
                                             <div class="slot-user" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.1; margin-right: 5px; overflow: hidden;">
-                                                <span style="font-weight: bold; color: #fff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                    {{ $attendee->in_game_name ?? $attendee->user->name }}
-                                                </span>
+                                        <span style="font-weight: bold; color: #fff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            {{ $attendee->in_game_name ?? $attendee->user->name }}
+                                        </span>
                                                 @if($attendee->in_game_name && $attendee->in_game_name !== $attendee->user->name)
                                                     <span style="font-size: 10px; color: #888;">(DC: {{ $attendee->user->name }})</span>
                                                 @endif
@@ -613,12 +666,12 @@
                                         <div class="slot-user" style="color: #ccc; display: flex; flex-direction: column; justify-content: center;">
                                             @if(!$isEmpty && !$isExtraSlot)
                                                 <span style="color: #fff; font-weight: 800; font-size: 11px; letter-spacing: 0.5px;">
-                                                {{ strtoupper($templateRole) }}
-                                            </span>
+                                        {{ strtoupper($templateRole) }}
+                                    </span>
                                             @else
                                                 <span style="font-size: 12px; opacity: 0.5; font-style:italic;">
-                                                {{ $isExtraSlot ? 'Bomb Squad / Flex' : 'Empty Slot' }}
-                                            </span>
+                                        {{ $isExtraSlot ? 'Bomb Squad / Flex' : 'Empty Slot' }}
+                                    </span>
                                             @endif
                                         </div>
                                     @endif
