@@ -510,12 +510,9 @@
     document.addEventListener('DOMContentLoaded', function() {
 
         const isCta = "{{ $link->type }}" !== 'content';
-
         const roleSelects = [
-            document.getElementById('role_1'),
-            document.getElementById('role_2'),
-            document.getElementById('role_3'),
-            document.getElementById('role_4')
+            document.getElementById('role_1'), document.getElementById('role_2'),
+            document.getElementById('role_3'), document.getElementById('role_4')
         ];
         const submitBtn = document.getElementById('joinSubmitBtn');
 
@@ -527,17 +524,13 @@
             });
 
             if (isCta) {
-                let selectedCount = 0;
-                let exclusiveRole = null;
-                let exclusiveIndex = -1;
-                let selectedValues = [];
-                let hasFill = false;
+                let selectedCount = 0; let exclusiveRole = null; let exclusiveIndex = -1;
+                let selectedValues = []; let hasFill = false;
 
                 roleSelects.forEach((select, index) => {
                     const val = select.value;
                     if (val && val.trim() !== '') {
-                        selectedCount++;
-                        selectedValues.push(val);
+                        selectedCount++; selectedValues.push(val);
                         if (['Bombsquad'].includes(val)) { exclusiveRole = val; exclusiveIndex = index; }
                         if (['Fill', 'Fill Tank', 'Fill DPS'].includes(val)) { hasFill = true; }
                     }
@@ -547,23 +540,16 @@
                     select.classList.remove('exclusive-active');
                     if (exclusiveRole) {
                         if (index === exclusiveIndex) {
-                            select.classList.add('exclusive-active');
-                            select.disabled = false;
-                        } else {
-                            select.value = '';
-                            select.disabled = true;
-                        }
-                    } else {
-                        select.disabled = false;
-                    }
+                            select.classList.add('exclusive-active'); select.disabled = false;
+                        } else { select.value = ''; select.disabled = true; }
+                    } else { select.disabled = false; }
                 });
 
                 let hasDuplicates = new Set(selectedValues).size !== selectedValues.length;
-
                 let isValid = false;
-                if (exclusiveRole) {
-                    isValid = true;
-                } else if (!hasDuplicates) {
+
+                if (exclusiveRole) { isValid = true; }
+                else if (!hasDuplicates) {
                     if (selectedCount >= 2) { isValid = true; }
                     else if (selectedCount === 1 && hasFill) { isValid = true; }
                 }
@@ -582,12 +568,12 @@
         roleSelects.forEach(select => {
             if(select) { select.addEventListener('input', checkRules); select.addEventListener('change', checkRules); }
         });
-
         checkRules();
 
-        // YENİ: SIFIR GECİKME! ?ajax=true ile sadece gerekli kısımları çekiyoruz. Sunucu yükü %90 azalıyor.
+        // YENİ: URL'deki karmaşaları (hash vs) temizleyerek garantili istek atıyoruz
         window.refreshBoard = function() {
-            fetch(window.location.href.split('?')[0] + '?ajax=true')
+            let baseUrl = window.location.href.split('?')[0].split('#')[0];
+            fetch(baseUrl + '?ajax=true')
                 .then(response => response.text())
                 .then(html => {
                     const parser = new DOMParser();
@@ -608,8 +594,10 @@
             if (ev.target.getAttribute('draggable') !== 'true') { ev.preventDefault(); return false; }
             ev.dataTransfer.setData("attendeeId", attendeeId);
 
-            // YENİ: Görsel hile için kartı hafızaya aldık
+            // KURŞUNGEÇİRMEZ YEDEK: Tarayıcı ID'yi unutursa diye global değişkene yazıyoruz!
+            window.draggedAttendeeId = attendeeId;
             window.draggedNode = ev.target;
+
             ev.target.classList.add('is-dragging');
         }
 
@@ -618,12 +606,22 @@
 
         window.drop = function(ev, slotIndex) {
             ev.preventDefault();
-            var attendeeId = ev.dataTransfer.getData("attendeeId");
+
+            // YENİ: ID'yi hem event'ten hem de garantili global değişkenimizden çekiyoruz
+            let attendeeId = ev.dataTransfer.getData("attendeeId") || window.draggedAttendeeId;
+
+            // Eğer ID her şeye rağmen yoksa işlemi durdurup hata ver (404'e düşmesini engeller)
+            if (!attendeeId) {
+                console.error("Taşınan kişinin ID'si bulunamadı!");
+                return;
+            }
+
             let target = ev.target.closest('.party-slot') || ev.target.closest('.waitlist-area');
 
             if (target) {
                 target.classList.remove('drag-over');
 
+                // 0ms GÖRSEL HİLE
                 if (window.draggedNode) {
                     window.draggedNode.style.opacity = '0.5';
                     window.draggedNode.style.pointerEvents = 'none';
@@ -635,7 +633,9 @@
                             cardContainer.appendChild(window.draggedNode);
                         }
                     } else if (target.classList.contains('waitlist-area')) {
-                        target.appendChild(window.draggedNode);
+                        // Waitliste bırakılırsa çirkin görünmemesi için kartı gizleyip waitlisti parlatıyoruz
+                        window.draggedNode.style.display = 'none';
+                        target.style.opacity = '0.5';
                     }
                 }
             }
@@ -643,11 +643,11 @@
             var slug = "{{ $link->slug }}";
             var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+            // ÇİFT İSTEK ATMAMASI İÇİN SOCKET ID EKLENDİ
             let fetchHeaders = {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': token
             };
-
             if (typeof Echo !== 'undefined' && Echo.socketId()) {
                 fetchHeaders['X-Socket-Id'] = Echo.socketId();
             }
@@ -657,11 +657,16 @@
                 headers: fetchHeaders,
                 body: JSON.stringify({ attendee_id: attendeeId, target_slot: slotIndex })
             }).then(response => response.json()).then(data => {
-                if(!data.success) { alert(data.error || 'Error'); }
-                refreshBoard(true);
+                if(!data.success) { alert(data.error || 'Hata oluştu!'); }
+                // İşlem bittiğinde arka plandan gelen orijinal HTML ile tazeliyoruz
+                refreshBoard();
+            }).catch(err => {
+                console.error("Move isteği başarısız oldu:", err);
+                refreshBoard(); // Hata olsa bile sayfayı düzelt
             });
         }
 
+        // --- BUILD MODAL KODLARI AYNEN KALIYOR ---
         window.openBuildModal = function(buildData, roleName, notes) {
             if(!buildData && !notes) return;
             document.getElementById('modalBuildName').innerText = buildData ? buildData.name : 'Build Details';
@@ -673,17 +678,12 @@
             if (buildData) {
                 grid.style.display = 'grid';
                 noBuildMsg.style.display = 'none';
-                setItemImage('eq-head', buildData.head_item);
-                setItemImage('eq-cape', buildData.cape_item);
-                setItemImage('eq-weapon', buildData.weapon_item);
-                setItemImage('eq-armor', buildData.armor_item);
-                setItemImage('eq-offhand', buildData.offhand_item);
-                setItemImage('eq-shoe', buildData.shoe_item);
-                setItemImage('eq-potion', buildData.potion_item);
-                setItemImage('eq-food', buildData.food_item);
+                setItemImage('eq-head', buildData.head_item); setItemImage('eq-cape', buildData.cape_item);
+                setItemImage('eq-weapon', buildData.weapon_item); setItemImage('eq-armor', buildData.armor_item);
+                setItemImage('eq-offhand', buildData.offhand_item); setItemImage('eq-shoe', buildData.shoe_item);
+                setItemImage('eq-potion', buildData.potion_item); setItemImage('eq-food', buildData.food_item);
             } else {
-                grid.style.display = 'none';
-                noBuildMsg.style.display = 'block';
+                grid.style.display = 'none'; noBuildMsg.style.display = 'block';
             }
             document.getElementById('buildModal').style.display = 'block';
         }
@@ -696,6 +696,7 @@
             else el.innerHTML = `<span class="eq-label" style="position:static; font-size:12px; opacity:0.3;">EMPTY</span>`;
         }
 
+        // --- CANLI İZLEYİCİ HOVER VE WEBSOCKET KODLARI ---
         const container = document.getElementById('viewer-container');
         const tooltip = document.getElementById('viewer-list-tooltip');
         let hideTimeout;
@@ -713,8 +714,7 @@
                 .joining((user) => { addViewer(user); })
                 .leaving((user) => { removeViewer(user); })
                 .listen('PartyUpdated', (e) => {
-                    // Diğer kullanıcılar anında yenilenmiş veriyi alacak (Sıfır gecikme)
-                    refreshBoard();
+                    refreshBoard(); // Diğer kullanıcılar için AJAX güncellemesi
                 });
         }
     });
@@ -738,6 +738,7 @@
         });
     }
 </script>
+
 </body>
 </html>
 @endif
