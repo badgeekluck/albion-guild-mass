@@ -406,19 +406,7 @@
             </div>
         </div>
     </div>
-
-    <div class="header-item">
-        <div class="header-icon" style="background: {{ $link->type == 'content' ? '#ec4899' : '#8b5cf6' }};">
-            {{ $link->type == 'content' ? '⚔️' : '📢' }}
-        </div>
-        <div>
-            <div style="font-size: 11px; text-transform: uppercase; font-weight: bold;">Party Type</div>
-            <div style="font-size: 18px; font-weight: bold; color: white; text-transform: uppercase;">
-                {{ $link->type == 'content' ? 'PvP Content' : 'CTA (Mass)' }}
-            </div>
-        </div>
-    </div>
-
+    
     <div class="header-item" style="position: relative; cursor: pointer;" id="viewer-container">
         <div class="header-icon" style="background: #f59e0b;">⏳</div>
         <div>
