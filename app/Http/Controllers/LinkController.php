@@ -365,7 +365,7 @@ class LinkController extends Controller
             'is_forced' => $isForced
         ]);
 
-        broadcast(new PartyUpdated($link));
+        broadcast(new PartyUpdated($link))->toOthers();
 
         return response()->json(['success' => true]);
     }
