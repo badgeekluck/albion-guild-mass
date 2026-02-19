@@ -406,7 +406,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="header-item" style="position: relative; cursor: pointer;" id="viewer-container">
         <div class="header-icon" style="background: #f59e0b;">⏳</div>
         <div>
