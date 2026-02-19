@@ -624,7 +624,6 @@
             if (target) {
                 target.classList.remove('drag-over');
 
-                // 0ms GÖRSEL HİLE: İşlem bitmeden anında hedef slota oturtuyoruz!
                 if (window.draggedNode) {
                     window.draggedNode.style.opacity = '0.5';
                     window.draggedNode.style.pointerEvents = 'none';
@@ -644,13 +643,22 @@
             var slug = "{{ $link->slug }}";
             var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+            let fetchHeaders = {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token
+            };
+
+            if (typeof Echo !== 'undefined' && Echo.socketId()) {
+                fetchHeaders['X-Socket-Id'] = Echo.socketId();
+            }
+
             fetch(`/go/${slug}/move`, {
-                method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': token},
+                method: 'POST',
+                headers: fetchHeaders,
                 body: JSON.stringify({ attendee_id: attendeeId, target_slot: slotIndex })
             }).then(response => response.json()).then(data => {
                 if(!data.success) { alert(data.error || 'Error'); }
-                // İşlem bittiğinde arka plandan gelen orijinal HTML ile tazeliyoruz (solukluk gider)
-                refreshBoard();
+                refreshBoard(true);
             });
         }
 
