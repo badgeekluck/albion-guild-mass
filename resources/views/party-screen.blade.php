@@ -318,6 +318,61 @@
         #eq-weapon { grid-column: 1; grid-row: 2; }
         #eq-offhand { grid-column: 3; grid-row: 2; }
         #eq-shoe { grid-column: 2; grid-row: 3; }
+
+        /* CANLI İZLEYİCİ TOOLTIP TASARIMI (YATAY YAPILANDIRMA) */
+        #viewer-list-tooltip {
+            display: none;
+            position: absolute;
+            top: 110%; /* Listeyi biraz aşağı iter, butonla çakışmasını önler */
+            right: 0;
+            background: #25252e;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 300px; /* Yatay liste için genişliği artırdık */
+            max-width: 400px;
+            z-index: 1000;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        #viewer-names {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 250px;
+            overflow-y: auto;
+
+            /* İŞTE LİSTEYİ YATAY YAPAN KISIM BURASI */
+            display: flex;
+            flex-wrap: wrap; /* İsimler sığmazsa alt satıra geçer */
+            gap: 8px; /* İsimler arası boşluk */
+        }
+
+        /* Scrollbar (Zorunlu değil ama güzel durur) */
+        #viewer-names::-webkit-scrollbar { width: 4px; }
+        #viewer-names::-webkit-scrollbar-track { background: #1e1e24; }
+        #viewer-names::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
+
+        /* HER BİR İSİM KUTUSU (TAG) */
+        .viewer-tag {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            color: #ccc;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            cursor: default;
+        }
+
+        .viewer-tag:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: #6366f1;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -902,9 +957,23 @@
 
             const container = document.getElementById('viewer-container');
             const tooltip = document.getElementById('viewer-list-tooltip');
+            let hideTimeout;
+
             if(container && tooltip) {
-                container.addEventListener('mouseenter', () => { tooltip.style.display = 'block'; });
-                container.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+                function showTooltip() {
+                    clearTimeout(hideTimeout);
+                    tooltip.style.display = 'block';
+                }
+                function hideTooltip() {
+                    hideTimeout = setTimeout(() => {
+                        tooltip.style.display = 'none';
+                    }, 300);
+                }
+
+                container.addEventListener('mouseenter', showTooltip);
+                container.addEventListener('mouseleave', hideTooltip);
+                tooltip.addEventListener('mouseenter', showTooltip);
+                tooltip.addEventListener('mouseleave', hideTooltip);
             }
 
             if (typeof Echo !== 'undefined') {
@@ -916,7 +985,6 @@
                         console.log('Parti güncellendi, ekran yenileniyor...');
                         window.location.reload();
                     });
-                // -----------------------------------
             }
         });
 
@@ -924,17 +992,23 @@
         function updateViewerList(users) { currentUsers = users; renderViewers(); }
         function addViewer(user) { if (!currentUsers.find(u => u.id === user.id)) { currentUsers.push(user); renderViewers(); } }
         function removeViewer(user) { currentUsers = currentUsers.filter(u => u.id !== user.id); renderViewers(); }
+
         function renderViewers() {
             const countEl = document.getElementById('live-count');
             if(countEl) countEl.innerText = currentUsers.length;
             const listEl = document.getElementById('viewer-names');
             if(!listEl) return;
             listEl.innerHTML = '';
-            if (currentUsers.length === 0) { listEl.innerHTML = '<li style="color:#666;font-style:italic;">No active users</li>'; return; }
+
+            if (currentUsers.length === 0) {
+                listEl.innerHTML = '<li style="width:100%; text-align:center; color:#666; font-style:italic;">No active users</li>';
+                return;
+            }
+
             currentUsers.forEach(user => {
                 const li = document.createElement('li');
-                li.style.cssText = 'padding:6px 0;border-bottom:1px solid #333;display:flex;gap:8px;align-items:center;';
-                li.innerHTML = `<span style="width:8px;height:8px;background:#10b981;border-radius:50%;"></span><span style="color:#e2e2e2;font-size:13px;font-weight:bold;">${user.name}</span>`;
+                li.className = 'viewer-tag'; // Yukarıda yazdığımız CSS sınıfı
+                li.innerHTML = `<span style="width:6px;height:6px;background:#10b981;border-radius:50%;box-shadow:0 0 5px #10b981;"></span><span style="font-weight:600;">${user.name}</span>`;
                 listEl.appendChild(li);
             });
         }
