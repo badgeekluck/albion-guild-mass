@@ -954,22 +954,27 @@
 
             checkRules();
 
-            window.refreshBoard = function() {
-                fetch(window.location.href)
-                    .then(response => response.text())
-                    .then(html => {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(html, 'text/html');
+            // YENİ: Sürükleyip bırakan isInitiator parametresini alır ve bekletilmez.
+            window.refreshBoard = function(isInitiator = false) {
+                const delay = isInitiator ? 0 : Math.floor(Math.random() * 1500); // İzleyiciler 0-1.5 saniye arası bekler
 
-                        const newGrid = doc.querySelector('.parties-grid');
-                        if (newGrid) document.querySelector('.parties-grid').innerHTML = newGrid.innerHTML;
+                setTimeout(() => {
+                    fetch(window.location.href)
+                        .then(response => response.text())
+                        .then(html => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
 
-                        const newWaitlist = doc.querySelector('.waitlist-area');
-                        if (newWaitlist) document.querySelector('.waitlist-area').innerHTML = newWaitlist.innerHTML;
+                            const newGrid = doc.querySelector('.parties-grid');
+                            if (newGrid) document.querySelector('.parties-grid').innerHTML = newGrid.innerHTML;
 
-                        const newHeader = doc.querySelector('.roster-area h2');
-                        if (newHeader) document.querySelector('.roster-area h2').innerHTML = newHeader.innerHTML;
-                    });
+                            const newWaitlist = doc.querySelector('.waitlist-area');
+                            if (newWaitlist) document.querySelector('.waitlist-area').innerHTML = newWaitlist.innerHTML;
+
+                            const newHeader = doc.querySelector('.roster-area h2');
+                            if (newHeader) document.querySelector('.roster-area h2').innerHTML = newHeader.innerHTML;
+                        });
+                }, delay);
             }
 
             window.drag = function(ev, attendeeId) {
@@ -992,7 +997,8 @@
                     if(!data.success) {
                         alert(data.error || 'Error');
                     } else {
-                        refreshBoard();
+                        // YENİ: İşlemi tetikleyen kişi "true" gönderir, bekleme yaşamaz.
+                        refreshBoard(true);
                     }
                 });
             }
@@ -1056,6 +1062,7 @@
                     .joining((user) => { addViewer(user); })
                     .leaving((user) => { removeViewer(user); })
                     .listen('PartyUpdated', (e) => {
+                        // YENİ: Diğer kullanıcılar için jitter tetiklenir (parametre gönderilmediği için false döner)
                         refreshBoard();
                     });
             }

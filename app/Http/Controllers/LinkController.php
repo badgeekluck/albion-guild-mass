@@ -60,7 +60,7 @@ class LinkController extends Controller
 
     public function showParty($slug)
     {
-        $link = SharedLink::with(['attendees', 'creator'])->where('slug', $slug)->firstOrFail();
+        $link = SharedLink::with(['attendees.user', 'creator'])->where('slug', $slug)->firstOrFail();
 
         $snapshot = $link->template_snapshot ?? [];
 
