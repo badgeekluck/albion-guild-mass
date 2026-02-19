@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PartyUpdated;
 use App\Models\GameRole;
 use App\Models\SharedLink;
 use App\Models\LinkClick;
@@ -364,7 +365,7 @@ class LinkController extends Controller
             'is_forced' => $isForced
         ]);
 
-        broadcast(new \App\Events\PartyUpdated($link));
+        broadcast(new PartyUpdated($link));
 
         return response()->json(['success' => true]);
     }

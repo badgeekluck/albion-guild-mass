@@ -911,7 +911,12 @@
                 Echo.join(`party.{{ $link->slug }}`)
                     .here((users) => { updateViewerList(users); })
                     .joining((user) => { addViewer(user); })
-                    .leaving((user) => { removeViewer(user); });
+                    .leaving((user) => { removeViewer(user); })
+                    .listen('PartyUpdated', (e) => {
+                        console.log('Parti güncellendi, ekran yenileniyor...');
+                        window.location.reload();
+                    });
+                // -----------------------------------
             }
         });
 
