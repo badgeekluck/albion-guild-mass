@@ -142,12 +142,14 @@
                         📋 Copy
                     </button>
 
-                    <form action="{{ route('dashboard.archive', $link->id) }}" method="POST" onsubmit="return confirm('Etkinliği bitirip arşive kaldırmak istiyor musun?');">
-                        @csrf
-                        <button type="submit" style="background:#f59e0b; color:black; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px;">
-                            🏁 Finish
-                        </button>
-                    </form>
+                    @if(auth()->user()->role === 'admin' || auth()->id() === $link->creator_id)
+                        <form action="{{ route('dashboard.archive', $link->id) }}" method="POST" onsubmit="return confirm('Etkinliği bitirip arşive kaldırmak istiyor musun?');">
+                            @csrf
+                            <button type="submit" style="background:#f59e0b; color:black; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px;">
+                                🏁 Finish
+                            </button>
+                        </form>
+                    @endif
                 </div>
             </div>
         @endforeach
@@ -181,7 +183,13 @@
                             👑 {{ $link->creator->name ?? 'Unknown' }}
                         </span>
 
-                            <span>🏁 {{ $link->updated_at->diffForHumans() }}</span>
+                            <span>🏁 Finished {{ $link->updated_at->diffForHumans() }}</span>
+
+                            @if($link->archiver)
+                                <span style="color:#ef4444; font-weight:bold; background:rgba(239, 68, 68, 0.1); padding:2px 6px; border-radius:4px;">
+                                    Closed by: {{ $link->archiver->name }}
+                                </span>
+                            @endif
 
                             <span style="color:#6366f1;">👥 {{ $link->attendees->count() }} Players</span>
                         </div>
@@ -192,12 +200,14 @@
                             👁️ View Stats
                         </a>
 
-                        <form action="{{ route('dashboard.delete', $link->id) }}" method="POST" onsubmit="return confirm('Arşivden tamamen silmek istediğine emin misin?');" style="margin:0;">
-                            @csrf @method('DELETE')
-                            <button type="submit" style="background:none; border:none; padding:5px; cursor:pointer;" title="Remove from list">
-                                🗑️
-                            </button>
-                        </form>
+                        @if(auth()->user()->role === 'admin' || auth()->id() === $link->creator_id)
+                            <form action="{{ route('dashboard.delete', $link->id) }}" method="POST" onsubmit="return confirm('Arşivden tamamen silmek istediğine emin misin?');" style="margin:0;">
+                                @csrf @method('DELETE')
+                                <button type="submit" style="background:none; border:none; padding:5px; cursor:pointer;" title="Remove from list">
+                                    🗑️
+                                </button>
+                            </form>
+                        @endif
                     </div>
                 </div>
             @endforeach

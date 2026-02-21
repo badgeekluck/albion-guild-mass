@@ -47,4 +47,9 @@ class SharedLink extends Model
     {
         return $this->belongsTo(User::class, 'creator_id');
     }
+
+    public function archiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'archived_by');
+    }
 }

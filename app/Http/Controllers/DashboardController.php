@@ -19,16 +19,14 @@ class DashboardController extends Controller
             ->get();
 
         $activeLinks = SharedLink::with(['creator', 'attendees'])
-            ->where('creator_id', auth()->id())
             ->where('status', 'active')
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $archivedLinks = SharedLink::with(['creator', 'attendees'])
-            ->where('creator_id', auth()->id())
+        $archivedLinks = SharedLink::with(['creator', 'attendees', 'archiver'])
             ->where('status', 'completed')
             ->orderBy('created_at', 'desc')
-            ->take(10)
+            ->take(20) // Biraz daha fazla gösterelim
             ->get();
 
         return view('dashboard', compact('templates', 'staffMembers', 'activeLinks', 'archivedLinks'));
@@ -36,9 +34,14 @@ class DashboardController extends Controller
 
     public function archiveLink($id)
     {
-        $link = SharedLink::where('id', $id)->where('creator_id', auth()->id())->firstOrFail();
+        $link = SharedLink::findOrFail($id);
+
+        if (auth()->user()->role !== 'admin' && auth()->id() !== $link->creator_id) {
+            abort(403, 'Bu etkinliği bitirme yetkiniz yok.');
+        }
 
         $link->status = 'completed';
+        $link->archived_by = auth()->id(); // KİMİN FİNİSHLEDİĞİNİ KAYDET
         $link->save();
 
         return back()->with('success', 'Etkinlik tamamlandı ve arşive taşındı! 🏁');
