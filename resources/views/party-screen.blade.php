@@ -618,26 +618,70 @@
             if (!attendeeId) return;
 
             let target = ev.target.closest('.party-slot') || ev.target.closest('.waitlist-area');
-            if (target) target.classList.remove('drag-over');
+            if (!target || !window.draggedNode) return;
+
+            target.classList.remove('drag-over');
 
             window.lastMoveTime = Date.now();
 
-            document.querySelector('.parties-grid').style.opacity = '0.6';
-            document.querySelector('.waitlist-area').style.opacity = '0.6';
+            let oldParent = window.draggedNode.parentNode;
+            let isFromWaitlist = window.draggedNode.classList.contains('waitlist-item');
+
+            let playerName = "Bilinmiyor";
+            let playerRole = "Fill";
+            try {
+                if (isFromWaitlist) {
+                    playerName = window.draggedNode.querySelector('div:first-child').innerText.split('\n')[0].trim();
+                    let roleTag = window.draggedNode.querySelector('.tag-main');
+                    if(roleTag) playerRole = roleTag.innerText;
+                } else {
+                    playerName = window.draggedNode.querySelector('.slot-user span').innerText;
+                    playerRole = window.draggedNode.querySelector('.slot-role').innerText;
+                }
+            } catch(e) { console.log(e); }
+
+            if (target.classList.contains('party-slot')) {
+                target.classList.remove('is-empty-slot');
+                let cardContainer = target.children[1];
+                if (cardContainer) {
+                    cardContainer.innerHTML = `
+                            <div class="player-card draggable-enabled" draggable="true" ondragstart="drag(event, ${attendeeId})">
+                                <div class="slot-user" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.1; margin-right: 5px; overflow: hidden;">
+                                    <span style="font-weight: bold; color: #fff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${playerName}</span>
+                                </div>
+                                <div class="slot-role">${playerRole}</div>
+                            </div>
+                        `;
+                }
+            } else if (target.classList.contains('waitlist-area')) {
+                let div = document.createElement('div');
+                div.className = 'waitlist-item draggable-enabled';
+                div.draggable = true;
+                div.ondragstart = function(event) { drag(event, attendeeId); };
+                div.innerHTML = `
+                        <div style="font-weight: bold; color: #fff; font-size: 13px;">${playerName}</div>
+                        <div class="role-tags-wrapper"><span class="role-tag tag-main">${playerRole}</span></div>
+                    `;
+                target.appendChild(div);
+            }
+
+            window.draggedNode.remove();
+            if (oldParent && oldParent.closest('.party-slot')) {
+                let oldSlot = oldParent.closest('.party-slot');
+                oldSlot.classList.add('is-empty-slot');
+                oldParent.innerHTML = `<div class="slot-user" style="color: #ccc; display: flex; flex-direction: column; justify-content: center;"><span style="font-size: 12px; opacity: 0.5; font-style:italic;">Empty Slot</span></div>`;
+            }
 
             var slug = "{{ $link->slug }}";
             var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            let fetchHeaders = { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token };
+            if (typeof Echo !== 'undefined' && Echo.socketId()) { fetchHeaders['X-Socket-Id'] = Echo.socketId(); }
 
             fetch(`/go/${slug}/move`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                headers: fetchHeaders,
                 body: JSON.stringify({ attendee_id: attendeeId, target_slot: slotIndex })
-            }).then(response => response.json()).then(data => {
-                if(!data.success) { alert(data.error || 'Hata oluştu!'); }
-                refreshBoard(true);
-            }).catch(err => {
-                refreshBoard(true);
-            });
+            }).catch(err => console.log(err)); // Hata olursa sadece console'a yaz, ekranı asla kilitleme!
         }
 
         window.openBuildModal = function(buildData, roleName, notes) {
