@@ -570,7 +570,6 @@
         });
         checkRules();
 
-        // YENİ: URL'deki karmaşaları (hash vs) temizleyerek garantili istek atıyoruz
         window.refreshBoard = function() {
             let baseUrl = window.location.href.split('?')[0].split('#')[0];
             fetch(baseUrl + '?ajax=true')
@@ -594,7 +593,6 @@
             if (ev.target.getAttribute('draggable') !== 'true') { ev.preventDefault(); return false; }
             ev.dataTransfer.setData("attendeeId", attendeeId);
 
-            // KURŞUNGEÇİRMEZ YEDEK: Tarayıcı ID'yi unutursa diye global değişkene yazıyoruz!
             window.draggedAttendeeId = attendeeId;
             window.draggedNode = ev.target;
 
@@ -607,36 +605,33 @@
         window.drop = function(ev, slotIndex) {
             ev.preventDefault();
 
-            // ID'yi garantili alıyoruz
             let attendeeId = ev.dataTransfer.getData("attendeeId") || window.draggedAttendeeId;
             if (!attendeeId) return;
 
             let target = ev.target.closest('.party-slot') || ev.target.closest('.waitlist-area');
+            let isDroppedToWaitlist = false; // Bekleme listesine mi atıldı kontrolü
 
-            // --- 0ms GÖRSEL HİLE (ANINDA YERLEŞTİRME) ---
             if (target && window.draggedNode) {
                 target.classList.remove('drag-over');
 
-                // 1. Kartı işlem bitene kadar hafif soluk yap
                 window.draggedNode.style.opacity = '0.5';
                 window.draggedNode.style.pointerEvents = 'none';
 
                 let oldParent = window.draggedNode.parentNode;
 
-                // 2. Kartı hedef yuvaya oturt
                 if (target.classList.contains('party-slot')) {
-                    target.classList.remove('is-empty-slot'); // Hedefteki kesik çizgiyi kaldır
+                    target.classList.remove('is-empty-slot');
                     let cardContainer = target.children[1];
                     if (cardContainer) {
                         cardContainer.innerHTML = '';
-                        cardContainer.appendChild(window.draggedNode); // ŞAK! Oturdu.
+                        cardContainer.appendChild(window.draggedNode);
                     }
-                } else if (target.classList.contains('waitlist-area')) {
-                    window.draggedNode.style.display = 'flex';
-                    target.appendChild(window.draggedNode); // Bekleme listesine oturdu.
+                }
+                else if (target.classList.contains('waitlist-area')) {
+                    isDroppedToWaitlist = true;
+                    window.draggedNode.style.display = 'none';
                 }
 
-                // 3. Kartın kalktığı eski yuvayı "Boş Slot" tasarımına çevir
                 if (oldParent && oldParent.closest('.party-slot')) {
                     let oldSlot = oldParent.closest('.party-slot');
                     oldSlot.classList.add('is-empty-slot');
@@ -644,7 +639,6 @@
                 }
             }
 
-            // --- ARKA PLAN SUNUCU İŞLEMİ ---
             var slug = "{{ $link->slug }}";
             var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
@@ -663,13 +657,15 @@
             }).then(response => response.json()).then(data => {
                 if(!data.success) {
                     alert(data.error || 'Hata oluştu!');
-                    refreshBoard(); // SADECE HATA OLURSA tabloyu tazele
+                    refreshBoard();
                 } else {
-                    // BAŞARILI! refreshBoard() ÇAĞIRMIYORUZ!
-                    // Sadece kartın solukluğunu düzeltiyoruz.
-                    if (window.draggedNode) {
-                        window.draggedNode.style.opacity = '1';
-                        window.draggedNode.style.pointerEvents = 'auto';
+                    if (isDroppedToWaitlist) {
+                        refreshBoard();
+                    } else {
+                        if (window.draggedNode) {
+                            window.draggedNode.style.opacity = '1';
+                            window.draggedNode.style.pointerEvents = 'auto';
+                        }
                     }
                 }
             }).catch(err => {
@@ -677,7 +673,6 @@
             });
         }
 
-        // --- BUILD MODAL KODLARI AYNEN KALIYOR ---
         window.openBuildModal = function(buildData, roleName, notes) {
             if(!buildData && !notes) return;
             document.getElementById('modalBuildName').innerText = buildData ? buildData.name : 'Build Details';
@@ -707,7 +702,6 @@
             else el.innerHTML = `<span class="eq-label" style="position:static; font-size:12px; opacity:0.3;">EMPTY</span>`;
         }
 
-        // --- CANLI İZLEYİCİ HOVER VE WEBSOCKET KODLARI ---
         const container = document.getElementById('viewer-container');
         const tooltip = document.getElementById('viewer-list-tooltip');
         let hideTimeout;
@@ -725,7 +719,7 @@
                 .joining((user) => { addViewer(user); })
                 .leaving((user) => { removeViewer(user); })
                 .listen('PartyUpdated', (e) => {
-                    refreshBoard(); // Diğer kullanıcılar için AJAX güncellemesi
+                    refreshBoard();
                 });
         }
     });
