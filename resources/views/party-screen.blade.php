@@ -570,32 +570,41 @@
         });
         checkRules();
 
-        window.refreshBoard = function() {
-            let baseUrl = window.location.href.split('?')[0].split('#')[0];
-            fetch(baseUrl + '?ajax=true')
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
+        window.lastMoveTime = 0;
 
-                    const newGrid = doc.querySelector('.parties-grid');
-                    if (newGrid) document.querySelector('.parties-grid').innerHTML = newGrid.innerHTML;
+        window.refreshBoard = function(isInitiator = false) {
+            const delay = isInitiator ? 0 : Math.floor(Math.random() * 3000) + 500;
 
-                    const newWaitlist = doc.querySelector('.waitlist-area');
-                    if (newWaitlist) document.querySelector('.waitlist-area').innerHTML = newWaitlist.innerHTML;
+            setTimeout(() => {
+                let baseUrl = window.location.href.split('?')[0].split('#')[0];
+                fetch(baseUrl + '?ajax=true')
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
 
-                    const newHeader = doc.querySelector('.roster-area h2');
-                    if (newHeader) document.querySelector('.roster-area h2').innerHTML = newHeader.innerHTML;
-                });
+                        const newGrid = doc.querySelector('.parties-grid');
+                        if (newGrid) {
+                            document.querySelector('.parties-grid').innerHTML = newGrid.innerHTML;
+                            document.querySelector('.parties-grid').style.opacity = '1'; // Solukluğu geri kaldır
+                        }
+
+                        const newWaitlist = doc.querySelector('.waitlist-area');
+                        if (newWaitlist) {
+                            document.querySelector('.waitlist-area').innerHTML = newWaitlist.innerHTML;
+                            document.querySelector('.waitlist-area').style.opacity = '1'; // Solukluğu geri kaldır
+                        }
+
+                        const newHeader = doc.querySelector('.roster-area h2');
+                        if (newHeader) document.querySelector('.roster-area h2').innerHTML = newHeader.innerHTML;
+                    });
+            }, delay);
         }
 
         window.drag = function(ev, attendeeId) {
             if (ev.target.getAttribute('draggable') !== 'true') { ev.preventDefault(); return false; }
             ev.dataTransfer.setData("attendeeId", attendeeId);
-
             window.draggedAttendeeId = attendeeId;
-            window.draggedNode = ev.target;
-
             ev.target.classList.add('is-dragging');
         }
 
@@ -609,67 +618,25 @@
             if (!attendeeId) return;
 
             let target = ev.target.closest('.party-slot') || ev.target.closest('.waitlist-area');
-            let isDroppedToWaitlist = false; // Bekleme listesine mi atıldı kontrolü
+            if (target) target.classList.remove('drag-over');
 
-            if (target && window.draggedNode) {
-                target.classList.remove('drag-over');
+            window.lastMoveTime = Date.now();
 
-                window.draggedNode.style.opacity = '0.5';
-                window.draggedNode.style.pointerEvents = 'none';
-
-                let oldParent = window.draggedNode.parentNode;
-
-                if (target.classList.contains('party-slot')) {
-                    target.classList.remove('is-empty-slot');
-                    let cardContainer = target.children[1];
-                    if (cardContainer) {
-                        cardContainer.innerHTML = '';
-                        cardContainer.appendChild(window.draggedNode);
-                    }
-                }
-                else if (target.classList.contains('waitlist-area')) {
-                    isDroppedToWaitlist = true;
-                    window.draggedNode.style.display = 'none';
-                }
-
-                if (oldParent && oldParent.closest('.party-slot')) {
-                    let oldSlot = oldParent.closest('.party-slot');
-                    oldSlot.classList.add('is-empty-slot');
-                    oldParent.innerHTML = `<div class="slot-user" style="color: #ccc; display: flex; flex-direction: column; justify-content: center;"><span style="font-size: 12px; opacity: 0.5; font-style:italic;">Empty Slot</span></div>`;
-                }
-            }
+            document.querySelector('.parties-grid').style.opacity = '0.6';
+            document.querySelector('.waitlist-area').style.opacity = '0.6';
 
             var slug = "{{ $link->slug }}";
             var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-            let fetchHeaders = {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': token
-            };
-            if (typeof Echo !== 'undefined' && Echo.socketId()) {
-                fetchHeaders['X-Socket-Id'] = Echo.socketId();
-            }
-
             fetch(`/go/${slug}/move`, {
                 method: 'POST',
-                headers: fetchHeaders,
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
                 body: JSON.stringify({ attendee_id: attendeeId, target_slot: slotIndex })
             }).then(response => response.json()).then(data => {
-                if(!data.success) {
-                    alert(data.error || 'Hata oluştu!');
-                    refreshBoard();
-                } else {
-                    if (isDroppedToWaitlist) {
-                        refreshBoard();
-                    } else {
-                        if (window.draggedNode) {
-                            window.draggedNode.style.opacity = '1';
-                            window.draggedNode.style.pointerEvents = 'auto';
-                        }
-                    }
-                }
+                if(!data.success) { alert(data.error || 'Hata oluştu!'); }
+                refreshBoard(true);
             }).catch(err => {
-                refreshBoard();
+                refreshBoard(true);
             });
         }
 
@@ -719,7 +686,10 @@
                 .joining((user) => { addViewer(user); })
                 .leaving((user) => { removeViewer(user); })
                 .listen('PartyUpdated', (e) => {
-                    refreshBoard();
+                    if (Date.now() - window.lastMoveTime < 2000) {
+                        return;
+                    }
+                    refreshBoard(false);
                 });
         }
     });
