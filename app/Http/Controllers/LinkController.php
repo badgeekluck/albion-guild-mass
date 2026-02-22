@@ -112,15 +112,18 @@ class LinkController extends Controller
             $resolvedWeaponNames = collect($snapshot)->pluck('role')->toArray();
         }
 
-        $key = 'party_viewers_' . $slug;
-        $viewers = Cache::get($key, []);
-        $identifier = auth()->check() ? 'user_'.auth()->id() : 'ip_'.request()->ip();
-        $viewers[$identifier] = now();
-        foreach ($viewers as $id => $time) {
-            if ($time->diffInMinutes(now()) > 5) unset($viewers[$id]);
+        $viewerCount = 0;
+        if (!request('ajax')) {
+            $key = 'party_viewers_' . $slug;
+            $viewers = Cache::get($key, []);
+            $identifier = auth()->check() ? 'user_'.auth()->id() : 'ip_'.request()->ip();
+            $viewers[$identifier] = now();
+            foreach ($viewers as $id => $time) {
+                if ($time->diffInMinutes(now()) > 5) unset($viewers[$id]);
+            }
+            Cache::put($key, $viewers, 300);
+            $viewerCount = count($viewers);
         }
-        Cache::put($key, $viewers, 300);
-        $viewerCount = count($viewers);
 
         $finalRoleList = collect($resolvedWeaponNames)
             ->flatten()

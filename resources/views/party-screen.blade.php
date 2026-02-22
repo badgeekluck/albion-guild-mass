@@ -607,43 +607,47 @@
         window.drop = function(ev, slotIndex) {
             ev.preventDefault();
 
-            // YENİ: ID'yi hem event'ten hem de garantili global değişkenimizden çekiyoruz
+            // ID'yi garantili alıyoruz
             let attendeeId = ev.dataTransfer.getData("attendeeId") || window.draggedAttendeeId;
-
-            // Eğer ID her şeye rağmen yoksa işlemi durdurup hata ver (404'e düşmesini engeller)
-            if (!attendeeId) {
-                console.error("Taşınan kişinin ID'si bulunamadı!");
-                return;
-            }
+            if (!attendeeId) return;
 
             let target = ev.target.closest('.party-slot') || ev.target.closest('.waitlist-area');
 
-            if (target) {
+            // --- 0ms GÖRSEL HİLE (ANINDA YERLEŞTİRME) ---
+            if (target && window.draggedNode) {
                 target.classList.remove('drag-over');
 
-                // 0ms GÖRSEL HİLE
-                if (window.draggedNode) {
-                    window.draggedNode.style.opacity = '0.5';
-                    window.draggedNode.style.pointerEvents = 'none';
+                // 1. Kartı işlem bitene kadar hafif soluk yap
+                window.draggedNode.style.opacity = '0.5';
+                window.draggedNode.style.pointerEvents = 'none';
 
-                    if (target.classList.contains('party-slot')) {
-                        let cardContainer = target.children[1];
-                        if (cardContainer) {
-                            cardContainer.innerHTML = '';
-                            cardContainer.appendChild(window.draggedNode);
-                        }
-                    } else if (target.classList.contains('waitlist-area')) {
-                        // Waitliste bırakılırsa çirkin görünmemesi için kartı gizleyip waitlisti parlatıyoruz
-                        window.draggedNode.style.display = 'none';
-                        target.style.opacity = '0.5';
+                let oldParent = window.draggedNode.parentNode;
+
+                // 2. Kartı hedef yuvaya oturt
+                if (target.classList.contains('party-slot')) {
+                    target.classList.remove('is-empty-slot'); // Hedefteki kesik çizgiyi kaldır
+                    let cardContainer = target.children[1];
+                    if (cardContainer) {
+                        cardContainer.innerHTML = '';
+                        cardContainer.appendChild(window.draggedNode); // ŞAK! Oturdu.
                     }
+                } else if (target.classList.contains('waitlist-area')) {
+                    window.draggedNode.style.display = 'flex';
+                    target.appendChild(window.draggedNode); // Bekleme listesine oturdu.
+                }
+
+                // 3. Kartın kalktığı eski yuvayı "Boş Slot" tasarımına çevir
+                if (oldParent && oldParent.closest('.party-slot')) {
+                    let oldSlot = oldParent.closest('.party-slot');
+                    oldSlot.classList.add('is-empty-slot');
+                    oldParent.innerHTML = `<div class="slot-user" style="color: #ccc; display: flex; flex-direction: column; justify-content: center;"><span style="font-size: 12px; opacity: 0.5; font-style:italic;">Empty Slot</span></div>`;
                 }
             }
 
+            // --- ARKA PLAN SUNUCU İŞLEMİ ---
             var slug = "{{ $link->slug }}";
             var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-            // ÇİFT İSTEK ATMAMASI İÇİN SOCKET ID EKLENDİ
             let fetchHeaders = {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': token
@@ -657,12 +661,19 @@
                 headers: fetchHeaders,
                 body: JSON.stringify({ attendee_id: attendeeId, target_slot: slotIndex })
             }).then(response => response.json()).then(data => {
-                if(!data.success) { alert(data.error || 'Hata oluştu!'); }
-                // İşlem bittiğinde arka plandan gelen orijinal HTML ile tazeliyoruz
-                refreshBoard();
+                if(!data.success) {
+                    alert(data.error || 'Hata oluştu!');
+                    refreshBoard(); // SADECE HATA OLURSA tabloyu tazele
+                } else {
+                    // BAŞARILI! refreshBoard() ÇAĞIRMIYORUZ!
+                    // Sadece kartın solukluğunu düzeltiyoruz.
+                    if (window.draggedNode) {
+                        window.draggedNode.style.opacity = '1';
+                        window.draggedNode.style.pointerEvents = 'auto';
+                    }
+                }
             }).catch(err => {
-                console.error("Move isteği başarısız oldu:", err);
-                refreshBoard(); // Hata olsa bile sayfayı düzelt
+                refreshBoard();
             });
         }
 
