@@ -586,13 +586,13 @@
                         const newGrid = doc.querySelector('.parties-grid');
                         if (newGrid) {
                             document.querySelector('.parties-grid').innerHTML = newGrid.innerHTML;
-                            document.querySelector('.parties-grid').style.opacity = '1'; // Solukluğu geri kaldır
+                            document.querySelector('.parties-grid').style.opacity = '1';
                         }
 
                         const newWaitlist = doc.querySelector('.waitlist-area');
                         if (newWaitlist) {
                             document.querySelector('.waitlist-area').innerHTML = newWaitlist.innerHTML;
-                            document.querySelector('.waitlist-area').style.opacity = '1'; // Solukluğu geri kaldır
+                            document.querySelector('.waitlist-area').style.opacity = '1';
                         }
 
                         const newHeader = doc.querySelector('.roster-area h2');
@@ -605,6 +605,10 @@
             if (ev.target.getAttribute('draggable') !== 'true') { ev.preventDefault(); return false; }
             ev.dataTransfer.setData("attendeeId", attendeeId);
             window.draggedAttendeeId = attendeeId;
+
+            // !!! EKSİK OLAN SATIR EKLENDİ !!! (Kartı hafızaya alıyoruz)
+            window.draggedNode = ev.target;
+
             ev.target.classList.add('is-dragging');
         }
 
@@ -681,7 +685,7 @@
                 method: 'POST',
                 headers: fetchHeaders,
                 body: JSON.stringify({ attendee_id: attendeeId, target_slot: slotIndex })
-            }).catch(err => console.log(err)); // Hata olursa sadece console'a yaz, ekranı asla kilitleme!
+            }).catch(err => console.log(err));
         }
 
         window.openBuildModal = function(buildData, roleName, notes) {
