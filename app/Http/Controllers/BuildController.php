@@ -83,7 +83,7 @@ class BuildController extends Controller
 
         SavedBuild::create($data);
 
-        return redirect()->route('admin.build.index')->with('success', 'Build başarıyla kaydedildi! 🛡️');
+        return redirect()->route('builds.index')->with('success', 'Build başarıyla kaydedildi! 🛡️');
     }
 
     public function destroy($id)
