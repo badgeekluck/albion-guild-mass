@@ -15,7 +15,7 @@
 
 ## 🚀 Key Features
 
-* **🛡️ Visual Roster:** Drag & drop interface for managing party slots, updated live for every viewer (Laravel Reverb).
+* **🛡️ Visual Roster:** Parties side by side, updated live for every viewer (Laravel Reverb). Players **claim** open slots, callers confirm, drag & drop, bench or kick.
 * **✅ Role Validation:** Players register up to 4 weapons; slots are matched by weapon/build (not by fuzzy names) and mismatches are flagged.
 * **📊 Role Summary:** Live "Tank 2/4 · Healer 3/5 · DPS …" overview per party.
 * **💣 Dynamic Slots:** "Bomb Squad" / extra slots can be added instantly by callers.
@@ -172,19 +172,31 @@ The first user to log in is a normal member — promote yourself with `php artis
 
 ## 📸 Screenshots
 
-![img.png](docs/screenshots/img.png)
+**Party screen** — players claim open slots, the caller confirms/benches, the enemy situation highlights everyone's swaps, and the *You* card shows your slot, gear and swap at a glance.
 
-![img_1.png](docs/screenshots/img_1.png)
+![Party screen](docs/screenshots/party-screen.jpg)
 
-![img_2.png](docs/screenshots/img_2.png)
+**Regear review** — deaths from the Albion killboard compared slot by slot with the build the player should have worn; the caller approves or rejects.
 
-![img_4.png](docs/screenshots/img_4.png)
+![Regear review](docs/screenshots/regear-review.jpg)
 
-![img_5.png](docs/screenshots/img_5.png)
+**Regear settings** — payout per role and minimum tier per role and gear slot.
 
-![img_6.png](docs/screenshots/img_6.png)
+![Regear settings](docs/screenshots/regear-settings.jpg)
 
-![img_7.png](docs/screenshots/img_7.png)
+**Build library** — every build with its gear, swaps and how many templates use it.
+
+![Build library](docs/screenshots/build-library.jpg)
+
+**Build editor** — Albion-style equipment grid with a searchable item picker.
+
+![Build editor](docs/screenshots/build-editor.jpg)
+
+![Item picker](docs/screenshots/build-item-picker.jpg)
+
+**Template editor** — fill slots from the build library with a click or drag.
+
+![Template editor](docs/screenshots/template-editor.jpg)
 
 ## Credits
 
