@@ -2,155 +2,124 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\SavedBuild;
+use App\Http\Requests\BuildRequest;
 use App\Models\GameRole;
+use App\Models\PartyTemplate;
+use App\Models\SavedBuild;
+use App\Services\RosterSpreadsheetImporter;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use Illuminate\View\View;
 
 class BuildController extends Controller
 {
-    public function index()
+    public function index(): View
     {
-        $builds = SavedBuild::with(['creator', 'updater', 'weapon'])
-            ->orderBy('updated_at', 'desc')
+        $builds = SavedBuild::with(['creator', 'updater', 'weapon', 'mount', 'head', 'armor', 'shoe', 'cape', 'offhand'])
+            ->latest('updated_at')
             ->get();
 
-        return view('admin.build.index', compact('builds'));
+        // How many templates use each build (shown on the card and before deleting).
+        $usage = [];
+        foreach (PartyTemplate::pluck('structure') as $structure) {
+            foreach (collect((array) $structure)->pluck('build_id')->filter()->unique() as $buildId) {
+                $usage[(int) $buildId] = ($usage[(int) $buildId] ?? 0) + 1;
+            }
+        }
+
+        return view('admin.build.index', compact('builds', 'usage'));
     }
 
-    public function create()
+    public function create(): View
     {
-        $weapons = GameRole::whereIn('category', ['DPS', 'Tank', 'Healer', 'Support'])
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get();
-
-        $helmets = GameRole::whereIn('category', [
-            'Plate Armor Helmet',
-            'Leather Armor Helmet',
-            'Cloth Armor Helmet'
-        ])
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get();
-
-        $armors = GameRole::whereIn('category', [
-            'Plate Armor Chest',
-            'Leather Armor Chest',
-            'Cloth Armor Chest'
-        ])
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get();
-
-        $shoes = GameRole::whereIn('category', [
-            'Plate Armor Shoes',
-            'Leather Armor Shoes',
-            'Cloth Armor Shoes'
-        ])
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get();
-
-        $offhands = GameRole::whereIn('category', ['Offhand', 'Shield'])
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get();
-
-        $capes = GameRole::where('category', 'Cape')
-            ->orderBy('name')
-            ->get();
-
-        $foods = GameRole::where('category', 'Food')
-            ->orderBy('name')
-            ->get();
-
-        $potions = GameRole::where('category', 'Potion')
-            ->orderBy('name')
-            ->get();
-
-        return view('admin.build.create', compact('weapons', 'helmets', 'armors', 'shoes', 'offhands', 'capes', 'foods', 'potions'));
+        return view('admin.build.form', ['build' => new SavedBuild, 'options' => $this->equipmentOptions(), 'itemNames' => $this->itemNames()]);
     }
 
-    public function store(Request $request)
+    public function store(BuildRequest $request): RedirectResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'role_category' => 'required',
-            'weapon_id' => 'required|exists:game_roles,id',
-        ]);
-        $data = $request->all();
-        $data['created_by'] = auth()->id();
-
-        SavedBuild::create($data);
+        $build = new SavedBuild($request->buildAttributes());
+        $build->created_by = $request->user()->id;
+        $build->save();
 
         return redirect()->route('builds.index')->with('success', 'Build başarıyla kaydedildi! 🛡️');
     }
 
-    public function destroy($id)
+    public function edit(SavedBuild $build): View
     {
-        SavedBuild::findOrFail($id)->delete();
+        return view('admin.build.form', ['build' => $build, 'options' => $this->equipmentOptions(), 'itemNames' => $this->itemNames()]);
+    }
+
+    public function update(BuildRequest $request, SavedBuild $build): RedirectResponse
+    {
+        $build->fill($request->buildAttributes());
+        $build->updated_by = $request->user()->id;
+        $build->save();
+
+        return redirect()->route('builds.index')->with('success', 'Build başarıyla güncellendi! ✨');
+    }
+
+    /** Copy a build to tweak it into a variant (e.g. "Hallowfall" → "Hallowfall (Def)"). */
+    public function duplicate(Request $request, SavedBuild $build): RedirectResponse
+    {
+        $copy = $build->replicate(['import_key', 'created_by', 'updated_by']);
+        $copy->name = mb_substr($build->name.' (kopya)', 0, 255);
+        $copy->created_by = $request->user()->id;
+        $copy->save();
+
+        return redirect()->route('builds.edit', $copy)->with('success', 'Build kopyalandı, şimdi düzenleyebilirsin.');
+    }
+
+    /** Imports builds + templates from a composition spreadsheet (see RosterSpreadsheetImporter). */
+    public function import(Request $request, RosterSpreadsheetImporter $importer): RedirectResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'extensions:xlsx', 'max:5120'],
+            'dry_run' => ['nullable', 'boolean'],
+        ]);
+
+        $file = $request->file('file');
+        $prefix = Str::limit(trim((string) preg_replace('/[^\pL\pN +&_-]/u', '', pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))), 60, '');
+
+        try {
+            $report = $importer->import($file->getRealPath(), $request->user()->id, $prefix, $request->boolean('dry_run'));
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('builds.index')
+            ->with('success', $report['dry_run'] ? 'Dry run tamamlandı, hiçbir şey kaydedilmedi.' : 'Excel içe aktarıldı.')
+            ->with('importReport', $report);
+    }
+
+    public function destroy(SavedBuild $build): RedirectResponse
+    {
+        $build->delete();
+
         return back()->with('success', 'Build silindi.');
     }
 
-    public function edit($id)
+    /** @return list<string> */
+    private function itemNames(): array
     {
-        $build = SavedBuild::findOrFail($id);
-
-        $weapons = GameRole::whereIn('category', ['DPS', 'Tank', 'Healer', 'Support'])
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get();
-
-        $helmets = GameRole::whereIn('category', ['Plate Armor Helmet', 'Leather Armor Helmet', 'Cloth Armor Helmet'])
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get();
-
-        $armors = GameRole::whereIn('category', ['Plate Armor Chest', 'Leather Armor Chest', 'Cloth Armor Chest'])
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get();
-
-        $shoes = GameRole::whereIn('category', ['Plate Armor Shoes', 'Leather Armor Shoes', 'Cloth Armor Shoes'])
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get();
-
-        $offhands = GameRole::whereIn('category', ['Offhand', 'Shield'])
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get();
-
-        $capes = GameRole::where('category', 'Cape')
-            ->orderBy('name')
-            ->get();
-
-        $foods = GameRole::where('category', 'Food')
-            ->orderBy('name')
-            ->get();
-
-        $potions = GameRole::where('category', 'Potion')
-            ->orderBy('name')
-            ->get();
-
-        return view('admin.build.edit', compact('build', 'weapons', 'helmets', 'armors', 'shoes', 'offhands', 'capes', 'foods', 'potions'));
+        return GameRole::orderBy('name')->pluck('name')->unique()->values()->all();
     }
 
-    public function update(Request $request, $id)
+    /**
+     * One query for every dropdown: slot => [category => items].
+     *
+     * @return array<string, Collection<string, Collection<int, GameRole>>>
+     */
+    private function equipmentOptions(): array
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'role_category' => 'required',
-            'weapon_id' => 'required|exists:game_roles,id',
-        ]);
+        $items = GameRole::orderBy('category')->orderBy('name')->get();
 
-        $build = SavedBuild::findOrFail($id);
+        $options = [];
+        foreach (SavedBuild::SLOT_CATEGORIES as $slot => $categories) {
+            $options[$slot] = $items->whereIn('category', $categories)->groupBy('category');
+        }
 
-        $data = $request->all();
-        $data['updated_by'] = auth()->id();
-
-        $build->update($data);
-
-        return redirect()->route('builds.index')->with('success', 'Build başarıyla güncellendi! ✨');
+        return $options;
     }
 }

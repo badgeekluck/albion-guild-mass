@@ -15,16 +15,16 @@
         .create-card { background: #1f2937; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
         .create-form { display: flex; gap: 10px; align-items: center; width: 100%; }
 
-        input[type="text"], select {
-            padding: 12px; background: #374151; border: 1px solid #4b5563;
-            color: white; border-radius: 6px; font-size: 14px;
+        input[type="text"], input[type="datetime-local"], select {
+            height: 42px; padding: 0 12px; background: #374151; border: 1px solid #4b5563;
+            color: white; border-radius: 8px; font-size: 14px; box-sizing: border-box;
         }
 
-        .btn-create { background: #6366f1; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; white-space: nowrap; }
-        .btn-create:hover { background: #4f46e5; }
-        .btn-manage { background: #4b5563; padding: 8px 12px; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; }
-        .btn-manage:hover { background: #374151; }
-        .btn-secondary { cursor: pointer; padding: 8px 12px; border-radius: 4px; font-size: 13px; border: 1px solid transparent; }
+        
+        
+        
+        
+        
 
         .link-card { background: #1f2937; padding: 20px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s; border: 1px solid #374151; }
         .link-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-color: #4b5563; }
@@ -35,15 +35,16 @@
         .link-url:hover { text-decoration: underline; }
 
         .actions { display: flex; gap: 10px; }
-        .btn-icon { background: #374151; color: #fff; border: 1px solid #4b5563; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 5px; }
-        .btn-icon:hover { background: #4b5563; }
-        .btn-delete { background: #ef4444; border-color: #dc2626; color: white; }
-        .btn-delete:hover { background: #dc2626; }
+        
+        
+        
+        
 
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
         .badge-green { background: #065f46; color: #34d399; border: 1px solid #059669; }
         .badge-gray { background: #374151; color: #d1d5db; border: 1px solid #4b5563; }
     </style>
+    @include('partials.buttons')
 </head>
 <body>
 
@@ -58,40 +59,31 @@
                 Logged in as: <strong style="color:white;">{{ auth()->user()->name }}</strong>
                 <span style="background:#374151; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:5px;">{{ strtoupper(auth()->user()->role) }}</span>
             </div>
-            <div style="margin-top: 10px;">
-                <a href="{{ route('templates.index') }}" class="btn-manage">⚙️ Manage Templates</a>
-                <button onclick="document.getElementById('staffModal').style.display='block'"
-                        class="btn-secondary"
-                        style="margin-right: 10px; background: #4f46e5; border-color: #4f46e5; color: white;">
-                    🛡️ Staff List
-                </button>
-                <a href="{{ route('builds.index') }}"
-                   class="btn-secondary"
-                   style="background: #8b5cf6; border-color: #7c3aed; color: white; margin-right: 10px;">
-                    🛠️ Manage Builds
-                </a>
-                <a href="{{ route('attendance.index') }}"
-                   class="btn-secondary"
-                   style="margin-right: 10px; background: #059669; border-color: #059669; color: white; text-decoration: none; display: inline-flex; align-items: center;">
-                    📊 Attendance
-                </a>
-                <a href="{{ route('logout') }}"
-                   style="background: #ef4444; color: white; text-decoration: none; padding: 8px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; display:inline-block;">
-                    🚪 Logout
-                </a>
-            </div>
+            <nav class="ui-btn-group" style="margin-top: 10px; justify-content: flex-end;">
+                <a href="{{ route('templates.index') }}" class="ui-btn">⚙️ Templates</a>
+                <a href="{{ route('builds.index') }}" class="ui-btn">🛠️ Builds</a>
+                <a href="{{ route('settings.regear') }}" class="ui-btn">💰 Regear Ayarları</a>
+                <a href="{{ route('attendance.index') }}" class="ui-btn">📊 Attendance</a>
+                <button type="button" class="ui-btn" onclick="document.getElementById('staffModal').style.display='block'">🛡️ Staff</button>
+                <form action="{{ route('logout') }}" method="POST">
+                    @csrf
+                    <button type="submit" class="ui-btn ui-btn--danger">🚪 Logout</button>
+                </form>
+            </nav>
         </div>
     </header>
 
+    @include('partials.flash')
+
     <div class="create-card">
         <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #e5e7eb;">Create New Party Link</h3>
-        <form action="{{ route('dashboard.create') }}" method="POST" class="create-form">
+        <form action="{{ route('dashboard.create') }}" method="POST" class="create-form" id="createPartyForm">
             @csrf
 
             <div style="flex: 0 0 150px;">
                 <select name="type" style="width: 100%; cursor: pointer;">
-                    <option value="cta">📢 CTA (Mass)</option>
-                    <option value="content">⚔️ PvP Content</option>
+                    <option value="cta" @selected(old('type') === 'cta')>📢 CTA (Mass)</option>
+                    <option value="content" @selected(old('type') === 'content')>⚔️ PvP Content</option>
                 </select>
             </div>
 
@@ -104,10 +96,33 @@
                 </select>
             </div>
 
-            <input type="text" name="title" placeholder="Party Title (e.g., ZvZ Saturday 20:00 UTC)" required style="flex: 1;">
+            <input type="text" name="title" value="{{ old('title') }}" placeholder="Party Title (e.g., ZvZ Saturday 20:00 UTC)" required maxlength="255" style="flex: 1;">
 
-            <button type="submit" class="btn-create">+ Create Link</button>
+            <div style="flex: 0 0 170px;">
+                <select name="registration_hours" style="width: 100%; cursor: pointer;" title="How long sign-ups stay open">
+                    @foreach($registrationHours as $hours)
+                        <option value="{{ $hours }}" @selected($hours === \App\Models\SharedLink::DEFAULT_REGISTRATION_HOURS)>⏰ Open {{ $hours }}h</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <button type="submit" class="ui-btn ui-btn--primary ui-btn--lg">+ Create Link</button>
         </form>
+        <div style="display:flex; gap: 10px; align-items:center; margin-top: 12px; font-size: 13px; color:#9ca3af; flex-wrap: wrap;">
+            <span>🕒 Etkinlik saati <span style="color:#6b7280;">(isteğe bağlı, regear için)</span></span>
+            <input type="datetime-local" id="eventStartLocal" style="height: 38px; padding: 0 10px;">
+            <select name="duration_hours" form="createPartyForm" style="height: 38px; padding: 0 10px;">
+                @foreach([1, 1.5, 2, 3, 4, 6] as $h)
+                    <option value="{{ $h }}" @selected($h == 2)>{{ str_replace('.', ',', (string) $h) }} saat</option>
+                @endforeach
+            </select>
+            <input type="hidden" name="starts_at" id="eventStartUtc" form="createPartyForm">
+        </div>
+        @if($canAnnounce)
+            <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:#9ca3af; cursor:pointer;">
+                <input type="checkbox" name="announce" value="1" form="createPartyForm" checked> 📣 Announce in Discord channel
+            </label>
+        @endif
     </div>
 
     <h3 style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 30px;">
@@ -130,26 +145,27 @@
                         </span>
                         <span>📅 {{ $link->created_at->diffForHumans() }}</span>
                         <span style="color:#6366f1; font-weight:bold;">
-        👥 {{ $link->attendees->count() }} Joined
-    </span>
+                            👥 {{ $link->attendees_count }} Joined · {{ $link->placed_count }}/{{ $link->maxSlots() }} placed
+                        </span>
+                        @if($link->registrationClosed())
+                            <span style="color:#fca5a5;">⏰ Registration closed</span>
+                        @else
+                            <span style="color:#6ee7b7;">⏰ Closes {{ $link->expires_at->diffForHumans() }}</span>
+                        @endif
                     </div>
                 </div>
 
-                <div style="display:flex; gap:10px;">
-                    <a href="{{ route('party.show', $link->slug) }}" target="_blank" class="btn-secondary" style="font-size:12px;">Open ↗</a>
+                <div class="ui-btn-group" style="flex-wrap: nowrap;">
+                    <a href="{{ route('party.show', $link) }}" target="_blank" class="ui-btn ui-btn--sm">↗ Open</a>
 
-                    <button onclick="navigator.clipboard.writeText('{{ route('party.show', $link->slug) }}'); alert('Copied!');" class="btn-secondary" style="font-size:12px;">
-                        📋 Copy
-                    </button>
+                    <button type="button" data-copy="{{ route('party.show', $link) }}" class="ui-btn ui-btn--sm">📋 Copy</button>
 
-                    @if(auth()->user()->role === 'admin' || auth()->id() === $link->creator_id)
-                        <form action="{{ route('dashboard.archive', $link->id) }}" method="POST" onsubmit="return confirm('Etkinliği bitirip arşive kaldırmak istiyor musun?');">
+                    @can('manage', $link)
+                        <form action="{{ route('dashboard.archive', $link) }}" method="POST" onsubmit="return confirm('Etkinliği bitirip arşive kaldırmak istiyor musun?');">
                             @csrf
-                            <button type="submit" style="background:#f59e0b; color:black; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px;">
-                                🏁 Finish
-                            </button>
+                            <button type="submit" class="ui-btn ui-btn--sm ui-btn--warning">🏁 Finish</button>
                         </form>
-                    @endif
+                    @endcan
                 </div>
             </div>
         @endforeach
@@ -191,23 +207,22 @@
                                 </span>
                             @endif
 
-                            <span style="color:#6366f1;">👥 {{ $link->attendees->count() }} Players</span>
+                            <span style="color:#6366f1;">👥 {{ $link->attended_count }}/{{ $link->attendees_count }} attended</span>
                         </div>
                     </div>
 
-                    <div style="display:flex; gap:10px;">
-                        <a href="{{ route('party.show', $link->slug) }}" class="btn-secondary" style="font-size:12px; padding:6px 12px; background:#374151; color:#e5e7eb; text-decoration:none; border-radius:4px;">
-                            👁️ View Stats
-                        </a>
+                    <div class="ui-btn-group" style="flex-wrap: nowrap;">
+                        <a href="{{ route('party.show', $link) }}" class="ui-btn ui-btn--sm">👁️ View</a>
+                        @can('manage', $link)
+                            <a href="{{ route('party.regear', $link) }}" class="ui-btn ui-btn--sm">💰 Regear</a>
+                        @endcan
 
-                        @if(auth()->user()->role === 'admin' || auth()->id() === $link->creator_id)
-                            <form action="{{ route('dashboard.delete', $link->id) }}" method="POST" onsubmit="return confirm('Arşivden tamamen silmek istediğine emin misin?');" style="margin:0;">
+                        @can('manage', $link)
+                            <form action="{{ route('dashboard.delete', $link) }}" method="POST" onsubmit="return confirm('Arşivden tamamen silmek istediğine emin misin?');" style="margin:0;">
                                 @csrf @method('DELETE')
-                                <button type="submit" style="background:none; border:none; padding:5px; cursor:pointer;" title="Remove from list">
-                                    🗑️
-                                </button>
+                                <button type="submit" class="ui-btn ui-btn--sm ui-btn--danger ui-btn--icon" title="Arşivden sil">🗑️</button>
                             </form>
-                        @endif
+                        @endcan
                     </div>
                 </div>
             @endforeach
@@ -253,10 +268,7 @@
         </div>
 
         <div style="margin-top: 15px; text-align: right;">
-            <button onclick="document.getElementById('staffModal').style.display='none'"
-                    style="background: #374151; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-                Close
-            </button>
+            <button type="button" class="ui-btn" onclick="document.getElementById('staffModal').style.display='none'">Close</button>
         </div>
     </div>
 </div>
@@ -276,14 +288,18 @@
     .staff-list::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
 </style>
 <script>
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(function() {
-            alert('Link copied to clipboard!');
-        }, function(err) {
-            console.error('Copy error: ', err);
-            prompt('Copy manually:', text);
-        });
-    }
+    // The caller types local time; the server stores UTC.
+    document.getElementById('eventStartLocal')?.addEventListener('change', function () {
+        document.getElementById('eventStartUtc').value = this.value ? new Date(this.value).toISOString() : '';
+    });
+
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-copy]');
+        if (!button) return;
+        const original = button.textContent;
+        const done = (text) => { button.textContent = text; setTimeout(() => (button.textContent = original), 1500); };
+        navigator.clipboard.writeText(button.dataset.copy).then(() => done('✅ Copied'), () => done('❌ Copy failed'));
+    });
 </script>
 
 </body>

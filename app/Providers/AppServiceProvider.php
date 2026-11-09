@@ -2,34 +2,25 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Event;
-use SocialiteProviders\Manager\SocialiteWasCalled;
 use SocialiteProviders\Discord\DiscordExtendSocialite;
+use SocialiteProviders\Manager\SocialiteWasCalled;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        if(env('APP_ENV') !== 'local') {
+        if (! $this->app->environment(['local', 'testing'])) {
             URL::forceScheme('https');
         }
 
-        Event::listen(
-            SocialiteWasCalled::class,
-            DiscordExtendSocialite::class.'@handle'
-        );
+        Event::listen(SocialiteWasCalled::class, [DiscordExtendSocialite::class, 'handle']);
     }
 }

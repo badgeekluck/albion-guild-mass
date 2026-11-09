@@ -37,6 +37,7 @@
         .cta-color { color: #fbbf24; } /* Amber for CTA */
         .content-color { color: #a78bfa; } /* Purple for Content */
     </style>
+    @include('partials.buttons')
 </head>
 <body>
 
@@ -48,9 +49,10 @@
                 Tracking participation across
                 <span style="color:#fbbf24; font-weight:bold;">CTA (Mass)</span> and
                 <span style="color:#a78bfa; font-weight:bold;">PvP Content</span>.
+                <br><span style="font-size: 12px;">Only finished events where the player was checked in as <strong>attended</strong> are counted.</span>
             </p>
         </div>
-        <a href="{{ route('dashboard') }}" class="btn-back">⬅ Back to Dashboard</a>
+        <a href="{{ auth()->user()->isStaff() ? route('dashboard') : route('home') }}" class="ui-btn">⬅ Back</a>
     </div>
 
     <div class="stats-card">

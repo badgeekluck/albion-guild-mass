@@ -5,54 +5,41 @@ namespace App\Http\Controllers;
 use App\Models\LinkAttendee;
 use App\Models\SharedLink;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\View\View;
 
 class AttendanceController extends Controller
 {
-    public function index()
+    public function index(): View
     {
+        // Archived (soft-deleted) events still count towards attendance.
+        $attended = fn (?string $type = null) => function (Builder $query) use ($type) {
+            $query->where('attended', true)->whereHas('link', function (Builder $q) use ($type) {
+                $q->withTrashed()->where('status', SharedLink::STATUS_COMPLETED)
+                    ->when($type, fn (Builder $q) => $q->where('type', $type));
+            });
+        };
+
         $users = User::withCount([
-            'attendees as total_attendance' => function ($query) {
-                $query->whereHas('link', function ($q) {
-                    $q->withTrashed()
-                    ->where('status', 'completed');
-                });
-            },
-
-            'attendees as cta_attendance' => function ($query) {
-                $query->whereHas('link', function ($q) {
-                    $q->withTrashed()
-                    ->where('type', 'cta')->where('status', 'completed');
-                });
-            },
-
-            'attendees as content_attendance' => function ($query) {
-                $query->whereHas('link', function ($q) {
-                    $q->withTrashed()
-                    ->where('type', 'content')->where('status', 'completed');
-                });
-            }
+            'attendees as total_attendance' => $attended(),
+            'attendees as cta_attendance' => $attended(SharedLink::TYPE_CTA),
+            'attendees as content_attendance' => $attended(SharedLink::TYPE_CONTENT),
         ])
-            ->orderBy('total_attendance', 'desc')
+            ->orderByDesc('total_attendance')
+            ->orderBy('name')
             ->get();
 
         return view('attendance-stats', compact('users'));
     }
 
-    public function show($id)
+    public function show(User $user): View
     {
-        $user = User::findOrFail($id);
-
-        $history = LinkAttendee::with(['link' => function($q) {
-            $q->withTrashed();
-        }])
-            ->where('user_id', $id)
-            ->whereHas('link', function($q) {
-                $q->withTrashed()
-                ->where('status', 'completed');
-            })
+        $history = LinkAttendee::with(['link' => fn ($q) => $q->withTrashed()])
+            ->where('user_id', $user->id)
+            ->whereHas('link', fn (Builder $q) => $q->withTrashed()->where('status', SharedLink::STATUS_COMPLETED))
             ->orderByDesc(
                 SharedLink::withTrashed()
-                ->select('created_at')
+                    ->select('created_at')
                     ->whereColumn('shared_links.id', 'link_attendees.shared_link_id')
             )
             ->get();

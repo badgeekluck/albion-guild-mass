@@ -44,6 +44,13 @@ return [
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
             ],
+            // Where the browser connects. Empty values fall back to the current page's host/port/scheme
+            // (nginx proxies /app to Reverb), so the same build works locally and in production.
+            'frontend' => [
+                'host' => env('REVERB_CLIENT_HOST'),
+                'port' => env('REVERB_CLIENT_PORT'),
+                'scheme' => env('REVERB_CLIENT_SCHEME'),
+            ],
         ],
 
         'pusher' => [
