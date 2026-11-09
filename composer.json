@@ -1,27 +1,29 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "badgeekduck/albion-party-manager",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "Web based party management tool for Albion Online guilds.",
+    "keywords": [
+        "laravel",
+        "albion-online",
+        "discord"
+    ],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
-        "laravel/framework": "^12.0",
-        "laravel/reverb": "^1.0",
-        "laravel/sanctum": "^4.0",
-        "laravel/socialite": "^5.24",
-        "laravel/tinker": "^2.10.1",
+        "php": "^8.4",
+        "laravel/framework": "^13.40",
+        "laravel/reverb": "^1.12",
+        "laravel/socialite": "^5.31",
+        "laravel/tinker": "^3.0",
         "socialiteproviders/discord": "^4.2"
     },
     "require-dev": {
-        "fakerphp/faker": "^1.23",
-        "laravel/pail": "^1.2.2",
-        "laravel/pint": "^1.24",
-        "laravel/sail": "^1.41",
+        "fakerphp/faker": "^1.24",
+        "laravel/pail": "^1.2.7",
+        "laravel/pint": "^1.32",
         "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "^8.6",
-        "phpunit/phpunit": "^11.5.3"
+        "nunomaduro/collision": "^8.9",
+        "phpunit/phpunit": "^12.5"
     },
     "autoload": {
         "psr-4": {

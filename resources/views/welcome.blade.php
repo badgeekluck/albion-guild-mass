@@ -69,25 +69,34 @@
 
     <h1>Albion Party Builder</h1>
 
+    @if (session('error'))
+        <div role="alert" style="background: rgba(239,68,68,0.15); border: 1px solid #ef4444; color: #fca5a5; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">{{ session('error') }}</div>
+    @endif
+    @if (session('success'))
+        <div role="status" style="background: rgba(16,185,129,0.15); border: 1px solid #10b981; color: #6ee7b7; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">{{ session('success') }}</div>
+    @endif
+
     @auth
         <p>Welcome back, <strong style="color:#fff">{{ auth()->user()->name }}</strong>!</p>
 
-        <a href="{{ route('dashboard') }}" class="btn btn-dashboard">
-            🚀 Go to Dashboard
-        </a>
+        @if(auth()->user()->isStaff())
+            <a href="{{ route('dashboard') }}" class="btn btn-dashboard">🚀 Go to Dashboard</a>
+        @endif
+        <a href="{{ route('attendance.index') }}" class="btn btn-dashboard" style="background-color:#059669;">📊 Attendance</a>
 
-        <form action="{{ route('logout') }}" method="GET">
+        <form action="{{ route('logout') }}" method="POST">
+            @csrf
             <button type="submit" class="btn btn-logout">Logout</button>
         </form>
-
     @else
         <p>Please login with your Discord account to create or join parties.</p>
 
-        <a href="{{ route('login') }}" class="btn btn-discord">
-            Login with Discord
-        </a>
-    @endauth
+        <a href="{{ route('login') }}" class="btn btn-discord">Login with Discord</a>
 
+        @if(\App\Support\DevLogin::enabled())
+            <a href="{{ route('dev.login') }}" class="btn" style="background:#374151; color:#fbbf24; margin-top:10px;">🧪 Dev Login (local only)</a>
+        @endif
+    @endauth
 </div>
 
 </body>

@@ -24,6 +24,7 @@
 
         .role-box { background: #111827; padding: 4px 8px; border-radius: 4px; display: inline-block; font-family: monospace; color: #e5e7eb; border: 1px solid #374151; }
     </style>
+    @include('partials.buttons')
 </head>
 <body>
 
@@ -31,9 +32,9 @@
     <div class="header">
         <div>
             <h1 style="margin:0; font-size: 22px; color: white;">👤 {{ $user->name }}</h1>
-            <p style="margin: 5px 0 0 0; color: #9ca3af; font-size: 13px;">Attendance History</p>
+            <p style="margin: 5px 0 0 0; color: #9ca3af; font-size: 13px;">Attendance History · {{ $history->where('attended', true)->count() }} / {{ $history->count() }} events attended</p>
         </div>
-        <a href="{{ route('attendance.index') }}" class="btn-back">⬅ Back to List</a>
+        <a href="{{ route('attendance.index') }}" class="ui-btn">⬅ Back to list</a>
     </div>
 
     <div class="card">
@@ -73,11 +74,12 @@
                         @endif
                     </td>
                     <td>
-                        @if($record->slot_index)
-                            <span style="color: #4ade80; font-size: 12px;">✅ In Party</span>
+                        @if($record->attended)
+                            <span style="color: #4ade80; font-size: 12px;">✅ Attended</span>
                         @else
-                            <span style="color: #fca5a5; font-size: 12px;">⏳ Waitlist</span>
+                            <span style="color: #fca5a5; font-size: 12px;">❌ Absent</span>
                         @endif
+                        <div style="font-size: 11px; color: #6b7280;">{{ $record->slot_index ? 'In Party (#'.$record->slot_index.')' : 'Waitlist' }}</div>
                     </td>
                 </tr>
             @empty

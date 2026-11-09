@@ -7,6 +7,15 @@ use Illuminate\Database\Seeder;
 
 class GameRoleSeeder extends Seeder
 {
+    private const RENAMED = [
+        'Truebolt Hammmer' => 'Truebolt Hammer',
+        'Forst Sterling Cape' => 'Fort Sterling Cape',
+        'Thetfort Cape' => 'Thetford Cape',
+        'Carleon Cape' => 'Caerleon Cape',
+        'Hallberd' => 'Halberd',
+        'Infernal Scyhte' => 'Infernal Scythe',
+    ];
+
     public function run(): void
     {
         $roles = [
@@ -25,7 +34,7 @@ class GameRoleSeeder extends Seeder
             ['name' => 'Polehammer', 'category' => 'Tank', 'icon' => "Elder's Polehammer"],
             ['name' => 'Great Hammer', 'category' => 'Tank', 'icon' => "Elder's Great Hammer"],
             ['name' => 'Hand of Justice', 'category' => 'Tank', 'icon' => "Elder's Hand of Justice"],
-            ['name' => 'Truebolt Hammmer', 'category' => 'Tank', 'icon' => "Elder's Truebolt Hammmer"],
+            ['name' => 'Truebolt Hammer', 'category' => 'Tank', 'icon' => "Elder's Truebolt Hammer"],
             ['name' => 'Grailseeker', 'category' => 'Tank', 'icon' => "Elder's Grailseeker"],
             ['name' => 'Black Monk Stave', 'category' => 'Tank', 'icon' => "Elder's Black Monk Stave"],
             ['name' => 'Soulscythe Combat', 'category' => 'Tank', 'icon' => "Elder's Soulscythe Combat"],
@@ -127,9 +136,9 @@ class GameRoleSeeder extends Seeder
             ['name' => 'Forcepulse Bracers', 'category' => 'DPS', 'icon' => "Elder's Forcepulse Bracers"],
 
             ['name' => 'Greataxe', 'category' => 'DPS', 'icon' => "Elder's Greataxe"],
-            ['name' => 'Hallberd', 'category' => 'DPS', 'icon' => "Elder's Hallberd"],
+            ['name' => 'Halberd', 'category' => 'DPS', 'icon' => "Elder's Halberd"],
             ['name' => 'Carrioncaller', 'category' => 'DPS', 'icon' => "Elder's Carrioncaller"],
-            ['name' => 'Infernal Scyhte', 'category' => 'DPS', 'icon' => "Elder's Infernal Scyhte"],
+            ['name' => 'Infernal Scythe', 'category' => 'DPS', 'icon' => "Elder's Infernal Scythe"],
             ['name' => 'Bear Paws', 'category' => 'DPS', 'icon' => "Elder's Bear Paws"],
             ['name' => 'Crystal Reaper', 'category' => 'DPS', 'icon' => "Elder's Crystal Reaper"],
 
@@ -166,21 +175,20 @@ class GameRoleSeeder extends Seeder
             ['name' => 'Heron Spear', 'category' => 'DPS', 'icon' => "Elder's Heron Spear"],
             ['name' => 'Glaive', 'category' => 'DPS', 'icon' => "Elder's Glaive"],
 
-
-            ['name' => 'Ancient Ent' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Flame Basilisk' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Venom Basilisk' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Roving Bastion' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Battle Eagle' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Battle Rhino' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Behemoth' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Goliath Horseeater' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Siege Ballista' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Juggernaut' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Tower Chariot' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Phalanx Beetle' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Colossus Beetle' , 'category' => 'Battle Mount' ] ,
-            ['name' => 'Command Mammoth' , 'category' => 'Battle Mount' ] ,
+            ['name' => 'Ancient Ent', 'category' => 'Battle Mount'],
+            ['name' => 'Flame Basilisk', 'category' => 'Battle Mount'],
+            ['name' => 'Venom Basilisk', 'category' => 'Battle Mount'],
+            ['name' => 'Roving Bastion', 'category' => 'Battle Mount'],
+            ['name' => 'Battle Eagle', 'category' => 'Battle Mount'],
+            ['name' => 'Battle Rhino', 'category' => 'Battle Mount'],
+            ['name' => 'Behemoth', 'category' => 'Battle Mount'],
+            ['name' => 'Goliath Horseeater', 'category' => 'Battle Mount'],
+            ['name' => 'Siege Ballista', 'category' => 'Battle Mount'],
+            ['name' => 'Juggernaut', 'category' => 'Battle Mount'],
+            ['name' => 'Tower Chariot', 'category' => 'Battle Mount'],
+            ['name' => 'Phalanx Beetle', 'category' => 'Battle Mount'],
+            ['name' => 'Colossus Beetle', 'category' => 'Battle Mount'],
+            ['name' => 'Command Mammoth', 'category' => 'Battle Mount'],
 
             ['name' => 'Soldier Helmet', 'category' => 'Plate Armor Helmet', 'icon' => "Elder's Soldier Helmet"],
             ['name' => 'Knight Helmet', 'category' => 'Plate Armor Helmet', 'icon' => "Elder's Knight Helmet"],
@@ -291,37 +299,53 @@ class GameRoleSeeder extends Seeder
             ['name' => 'Celestial Censer', 'category' => 'Offhand', 'icon' => "Elder's Celestial Censer"],
             ['name' => 'Timelocked Grimoire', 'category' => 'Offhand', 'icon' => "Elder's Timelocked Grimoire"],
 
-            ['name' => 'Martlock Cape' , 'category' => 'Cape' , 'icon' => "Elder's Martlock Cape"],
-            ['name' => 'Smuggler Cape' , 'category' => 'Cape' , 'icon' => "Elder's Smuggler Cape"],
-            ['name' => 'Brecilien Cape' , 'category' => 'Cape' , 'icon' => "Elder's Brecilien Cape"],
-            ['name' => 'Lymhurst Cape' , 'category' => 'Cape' , 'icon' => "Elder's Lymhurst Cape"],
-            ['name' => 'Morgana Cape' , 'category' => 'Cape' , 'icon' => "Elder's Morgana Cape"],
-            ['name' => 'Undead Cape' , 'category' => 'Cape' , 'icon' => "Elder's Undead Cape"],
-            ['name' => 'Avalonian Cape' , 'category' => 'Cape' , 'icon' => "Elder's Avalonian Cape"],
-            ['name' => 'Bridgewatch Cape' , 'category' => 'Cape' , 'icon' => "Elder's Bridgewatch Cape"],
-            ['name' => 'Forst Sterling Cape' , 'category' => 'Cape' , 'icon' => "Elder's Forst Sterling Cape"],
-            ['name' => 'Demon Cape' , 'category' => 'Cape' , 'icon' => "Elder's Demon Cape"],
-            ['name' => 'Thetfort Cape' , 'category' => 'Cape' , 'icon' => "Elder's Thetfort Cape"],
-            ['name' => 'Carleon Cape' , 'category' => 'Cape' , 'icon' => "Elder's Carleon Cape"],
-            ['name' => 'Keeper Cape' , 'category' => 'Cape' , 'icon' => "Elder's Keeper Cape"],
-            ['name' => 'Heretic Cape' , 'category' => 'Cape' , 'icon' => "Elder's Heretic Cape"],
+            ['name' => 'Martlock Cape', 'category' => 'Cape', 'icon' => "Elder's Martlock Cape"],
+            ['name' => 'Smuggler Cape', 'category' => 'Cape', 'icon' => "Elder's Smuggler Cape"],
+            ['name' => 'Brecilien Cape', 'category' => 'Cape', 'icon' => "Elder's Brecilien Cape"],
+            ['name' => 'Lymhurst Cape', 'category' => 'Cape', 'icon' => "Elder's Lymhurst Cape"],
+            ['name' => 'Morgana Cape', 'category' => 'Cape', 'icon' => "Elder's Morgana Cape"],
+            ['name' => 'Undead Cape', 'category' => 'Cape', 'icon' => "Elder's Undead Cape"],
+            ['name' => 'Avalonian Cape', 'category' => 'Cape', 'icon' => "Elder's Avalonian Cape"],
+            ['name' => 'Bridgewatch Cape', 'category' => 'Cape', 'icon' => "Elder's Bridgewatch Cape"],
+            ['name' => 'Fort Sterling Cape', 'category' => 'Cape', 'icon' => "Elder's Fort Sterling Cape"],
+            ['name' => 'Demon Cape', 'category' => 'Cape', 'icon' => "Elder's Demon Cape"],
+            ['name' => 'Thetford Cape', 'category' => 'Cape', 'icon' => "Elder's Thetford Cape"],
+            ['name' => 'Caerleon Cape', 'category' => 'Cape', 'icon' => "Elder's Caerleon Cape"],
+            ['name' => 'Keeper Cape', 'category' => 'Cape', 'icon' => "Elder's Keeper Cape"],
+            ['name' => 'Heretic Cape', 'category' => 'Cape', 'icon' => "Elder's Heretic Cape"],
 
-            ['name' => 'Gigantify Potion' , 'category' => 'Potion' , 'icon' => "Major Gigantify Potion"],
-            ['name' => 'Resistance Potion' , 'category' => 'Potion' , 'icon' => "Major Resistance Potion"],
-            ['name' => 'Cleansing Potion' , 'category' => 'Potion' , 'icon' => "Major Cleansing Potion"],
+            ['name' => 'Gigantify Potion', 'category' => 'Potion', 'icon' => 'Major Gigantify Potion'],
+            ['name' => 'Resistance Potion', 'category' => 'Potion', 'icon' => 'Major Resistance Potion'],
+            ['name' => 'Cleansing Potion', 'category' => 'Potion', 'icon' => 'Major Cleansing Potion'],
 
-            ['name' => 'Pork Omelette' , 'category' => 'Food' , 'icon' => "Pork Omelette"],
-            ['name' => 'Avalonian Pork Omelette' , 'category' => 'Food' , 'icon' => "Avalonian Pork Omelette"],
-            ['name' => 'Dusthole Crab Omelette' , 'category' => 'Food' , 'icon' => "Dusthole Crab Omelette"],
-            ['name' => 'Beef Stew' , 'category' => 'Food' , 'icon' => "Beef Stew"],
-            ['name' => 'Avalonian Beef Stew' , 'category' => 'Food' , 'icon' => "Avalonian Beef Stew"],
-            ['name' => 'Beef Sandwich' , 'category' => 'Food' , 'icon' => "Beef Sandwich"],
-            ['name' => 'Avalonian Beef Sandwich' , 'category' => 'Food' , 'icon' => "Avalonian Beef Sandwich"],
+            ['name' => 'Pork Omelette', 'category' => 'Food', 'icon' => 'Pork Omelette'],
+            ['name' => 'Avalonian Pork Omelette', 'category' => 'Food', 'icon' => 'Avalonian Pork Omelette'],
+            ['name' => 'Dusthole Crab Omelette', 'category' => 'Food', 'icon' => 'Dusthole Crab Omelette'],
+            ['name' => 'Beef Stew', 'category' => 'Food', 'icon' => 'Beef Stew'],
+            ['name' => 'Avalonian Beef Stew', 'category' => 'Food', 'icon' => 'Avalonian Beef Stew'],
+            ['name' => 'Beef Sandwich', 'category' => 'Food', 'icon' => 'Beef Sandwich'],
+            ['name' => 'Avalonian Beef Sandwich', 'category' => 'Food', 'icon' => 'Avalonian Beef Sandwich'],
 
         ];
 
+        // Typo fixes: rename in place so existing builds / registrations keep their IDs.
+        foreach (self::RENAMED as $old => $new) {
+            if (! GameRole::where('name', $new)->exists()) {
+                GameRole::where('name', $old)->update(['name' => $new]);
+            }
+        }
+
+        // Idempotent: safe to run on every deploy / container start.
         foreach ($roles as $role) {
-            GameRole::create($role);
+            GameRole::updateOrCreate(
+                ['name' => $role['name'], 'category' => $role['category']],
+                ['icon' => $role['icon'] ?? null],
+            );
+        }
+
+        // Unique item IDs for icons (see database/data/albion_item_ids.php).
+        foreach (require database_path('data/albion_item_ids.php') as $name => $uniqueName) {
+            GameRole::where('name', $name)->update(['unique_name' => $uniqueName]);
         }
     }
-    }
+}

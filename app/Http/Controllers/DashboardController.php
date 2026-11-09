@@ -2,84 +2,101 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StorePartyRequest;
+use App\Jobs\PostDiscordMessage;
 use App\Models\PartyTemplate;
-use App\Models\User;
-use Illuminate\Http\Request;
 use App\Models\SharedLink;
-use Illuminate\Support\Str;
+use App\Models\User;
+use App\Services\Discord\DiscordClient;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(DiscordClient $discord): View
     {
-        $templates = PartyTemplate::orderBy('name')->get();
-
-        $staffMembers = User::whereIn('role', ['admin', 'content-creator'])
-            ->orderBy('name')
-            ->get();
-
-        $activeLinks = SharedLink::with(['creator', 'attendees'])
-            ->where('status', 'active')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        $archivedLinks = SharedLink::with(['creator', 'attendees', 'archiver'])
-            ->where('status', 'completed')
-            ->orderBy('created_at', 'desc')
-            ->take(20) // Biraz daha fazla gösterelim
-            ->get();
-
-        return view('dashboard', compact('templates', 'staffMembers', 'activeLinks', 'archivedLinks'));
+        return view('dashboard', [
+            'templates' => PartyTemplate::orderBy('name')->get(['id', 'name', 'size']),
+            'staffMembers' => User::whereIn('role', User::STAFF_ROLES)->orderBy('name')->get(),
+            'activeLinks' => SharedLink::with('creator')
+                ->withCount(['attendees', 'attendees as placed_count' => fn ($q) => $q->whereNotNull('slot_index')])
+                ->where('status', SharedLink::STATUS_ACTIVE)
+                ->latest()
+                ->get(),
+            'archivedLinks' => SharedLink::with(['creator', 'archiver'])
+                ->withCount(['attendees', 'attendees as attended_count' => fn ($q) => $q->where('attended', true)])
+                ->where('status', SharedLink::STATUS_COMPLETED)
+                ->latest('updated_at')
+                ->take(20)
+                ->get(),
+            'registrationHours' => StorePartyRequest::REGISTRATION_HOURS,
+            'canAnnounce' => $discord->announcementsConfigured(),
+        ]);
     }
 
-    public function archiveLink($id)
+    public function store(StorePartyRequest $request, DiscordClient $discord): RedirectResponse
     {
-        $link = SharedLink::findOrFail($id);
+        $data = $request->validated();
+        $template = isset($data['template_id']) ? PartyTemplate::find($data['template_id']) : null;
 
-        if (auth()->user()->role !== 'admin' && auth()->id() !== $link->creator_id) {
-            abort(403, 'Bu etkinliği bitirme yetkiniz yok.');
-        }
+        $startsAt = ! empty($data['starts_at']) ? Carbon::parse($data['starts_at'])->utc() : null;
 
-        $link->status = 'completed';
-        $link->archived_by = auth()->id(); // KİMİN FİNİSHLEDİĞİNİ KAYDET
-        $link->save();
-
-        return back()->with('success', 'Etkinlik tamamlandı ve arşive taşındı! 🏁');
-    }
-
-    public function createLink(Request $request)
-    {
-        $request->validate([
-            'title' => 'nullable|string|max:255',
-            'template_id' => 'nullable|exists:party_templates,id'
+        $link = SharedLink::create([
+            'creator_id' => $request->user()->id,
+            'title' => $data['title'],
+            'type' => $data['type'],
+            'template_snapshot' => $template?->structure,
+            'briefing' => $template?->briefing,
+            'expires_at' => now()->addHours((int) ($data['registration_hours'] ?? SharedLink::DEFAULT_REGISTRATION_HOURS)),
         ]);
 
-        $templateSnapshot = null;
-        if ($request->template_id) {
-            $template = PartyTemplate::find($request->template_id);
-            $templateSnapshot = $template->structure;
+        if ($startsAt) {
+            $link->forceFill([
+                'starts_at' => $startsAt,
+                'ends_at' => $startsAt->copy()->addMinutes((int) round(60 * (float) ($data['duration_hours'] ?? 2))),
+            ])->save();
         }
 
-        SharedLink::create([
-            'creator_id' => auth()->id(),
-            'slug' => Str::random(6),
-            'destination_url' => 'https://discord.gg/albion', // destination place
-            'expires_at' => now()->addHours(8), // default 8h
-            'template_snapshot' => $templateSnapshot,
-            'title' => $request->input('title') ? $request->input('title') : 'Untitled Party',
-            'type' => $request->type ?? 'cta'
-        ]);
+        if ($request->boolean('announce') && $discord->announcementsConfigured()) {
+            $type = $link->isContent() ? '⚔️ PvP Content' : '📢 CTA (Mass)';
+            PostDiscordMessage::dispatch(
+                (string) config('services.discord.announce_channel_id'),
+                "{$type} **{$link->title}** — kayıtlar açık! ({$link->maxSlots()} slot)\n".route('party.show', $link)
+                    ."\nKayıt kapanışı: <t:{$link->expires_at->timestamp}:R>",
+            );
+        }
 
         return back()->with('success', 'Yeni parti linki oluşturuldu!');
     }
 
-    public function deleteLink($id)
+    public function archive(Request $request, SharedLink $link): RedirectResponse
     {
-        $link = SharedLink::findOrFail($id);
+        Gate::authorize('manage', $link);
 
-        if (auth()->user()->role !== 'admin' && auth()->id() !== $link->creator_id) {
-            abort(403, 'Bu linki silme yetkiniz yok.');
+        if ($link->isCompleted()) {
+            return back()->with('error', 'Bu etkinlik zaten arşivde.');
         }
+
+        DB::transaction(function () use ($link, $request) {
+            $link->forceFill([
+                'status' => SharedLink::STATUS_COMPLETED,
+                'archived_by' => $request->user()->id,
+            ])->save();
+
+            // Default check-in: players placed in a slot attended; staff can adjust afterwards.
+            $link->attendees()->update(['attended' => DB::raw('CASE WHEN slot_index IS NULL THEN 0 ELSE 1 END')]);
+        });
+
+        return back()->with('success', 'Etkinlik tamamlandı ve arşive taşındı! 🏁 Katılımı parti ekranından düzenleyebilirsiniz.');
+    }
+
+    public function destroy(SharedLink $link): RedirectResponse
+    {
+        Gate::authorize('manage', $link);
 
         $link->delete();
 

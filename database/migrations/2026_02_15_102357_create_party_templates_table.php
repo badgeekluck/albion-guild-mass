@@ -23,6 +23,7 @@ return new class extends Migration
             $table->json('template_snapshot')->nullable()->after('destination_url');
         });
     }
+
     /**
      * Reverse the migrations.
      */

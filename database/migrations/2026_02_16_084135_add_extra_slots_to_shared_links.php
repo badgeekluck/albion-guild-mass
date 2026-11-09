@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('shared_links', 'extra_slots')) {
+        if (! Schema::hasColumn('shared_links', 'extra_slots')) {
             Schema::table('shared_links', function (Blueprint $table) {
                 $table->integer('extra_slots')->default(0)->after('template_snapshot');
             });

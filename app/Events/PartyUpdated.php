@@ -7,13 +7,12 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
 
 class PartyUpdated implements ShouldBroadcastNow
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable, InteractsWithSockets;
 
-    public $slug;
+    public string $slug;
 
     public function __construct(SharedLink $link)
     {
@@ -22,15 +21,11 @@ class PartyUpdated implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [
-            new PresenceChannel('party.' . $this->slug),
-        ];
+        return [new PresenceChannel('party.'.$this->slug)];
     }
 
     public function broadcastWith(): array
     {
-        return [
-            'message' => 'refresh'
-        ];
+        return ['slug' => $this->slug, 'at' => now()->getTimestampMs()];
     }
 }
