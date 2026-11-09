@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\BuildRequest;
+use App\Models\AuditLog;
 use App\Models\GameRole;
 use App\Models\PartyTemplate;
 use App\Models\SavedBuild;
@@ -55,7 +56,11 @@ class BuildController extends Controller
     {
         $build->fill($request->buildAttributes());
         $build->updated_by = $request->user()->id;
+        $changed = array_values(array_diff(array_keys($build->getDirty()), ['updated_by']));
         $build->save();
+        if ($changed) {
+            AuditLog::record('build.update', "Build güncellendi: {$build->name}", details: ['build_id' => $build->id, 'fields' => $changed]);
+        }
 
         return redirect()->route('builds.index')->with('success', 'Build başarıyla güncellendi! ✨');
     }
@@ -96,6 +101,7 @@ class BuildController extends Controller
     public function destroy(SavedBuild $build): RedirectResponse
     {
         $build->delete();
+        AuditLog::record('build.delete', "Build silindi: {$build->name}", details: ['build_id' => $build->id]);
 
         return back()->with('success', 'Build silindi.');
     }

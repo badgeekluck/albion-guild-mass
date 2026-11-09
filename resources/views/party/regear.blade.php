@@ -88,7 +88,7 @@
             <p class="card-hint" style="margin-bottom: 8px;">
                 <b data-utc="{{ $link->starts_at->toIso8601ZuluString() }}" data-format="datetime"></b> –
                 <b data-utc="{{ $link->ends_at->toIso8601ZuluString() }}" data-format="time"></b>
-                <span class="muted">(senin saatinle · UTC {{ $link->starts_at->utc()->format('H:i') }}–{{ $link->ends_at->utc()->format('H:i') }})</span>
+                <span class="muted">(senin saatinle · UTC {{ $link->starts_at->utc()->format('H:i') }}–{{ $link->ends_at->utc()->format('H:i') }} · en az {{ $link->minBattleSize() }} kişilik savaşlar{{ $link->regear_include_alliance ? ' · alliance dahil' : '' }})</span>
             </p>
         @else
             <p class="card-hint">Saati kendi saatinle gir, UTC'ye otomatik çevrilir. Sadece bu aralıktaki ölümler getirilir.</p>
@@ -117,9 +117,31 @@
                         <label for="endLocal">Bitiş</label>
                         <input type="datetime-local" id="endLocal" required>
                     </div>
+                    <div class="field">
+                        <label for="minBattleSize">Min. savaş büyüklüğü</label>
+                        <input type="number" id="minBattleSize" name="min_battle_size" min="2" max="2000" style="width: 130px;"
+                               value="{{ $link->regear_min_battle_size }}" placeholder="{{ $link->maxSlots() }} (parti)">
+                    </div>
                     <button type="submit" class="btn primary">Kaydet</button>
                 </div>
                 <div class="muted" id="utcPreview" style="margin-top: 8px; font-size: 13px;"></div>
+                <label style="display:flex; align-items:center; gap:8px; margin-top: 10px; font-size: 13px; cursor:pointer;">
+                    <input type="checkbox" name="include_alliance" value="1" @checked($link->regear_include_alliance)>
+                    🤝 Alliance üyelerini de dahil et
+                    <span class="muted" style="font-size: 12px;">— alliance'taki diğer guild'lerin, bu partiye kayıtlı oyuncularının ölümleri de getirilir</span>
+                </label>
+                @if($link->regear_include_alliance)
+                    <div class="muted" style="margin-top: 4px; font-size: 12px;">
+                        @if($alliance === null)
+                            Alliance bilgisi şu an alınamadı; tarama sırasında tekrar denenecek.
+                        @elseif($alliance['id'] === null)
+                            <span style="color: var(--warn);">Guild şu an bir alliance'ta değil; sadece guild taranır.</span>
+                        @else
+                            Alliance [{{ $alliance['tag'] }}]{{ $alliance['name'] ? ' '.$alliance['name'] : '' }}: {{ collect($alliance['guilds'])->pluck('name')->implode(', ') }}
+                        @endif
+                    </div>
+                @endif
+                <div class="muted" style="margin-top: 4px; font-size: 12px;">Bu sayıdan az oyunculu (iki taraf dahil) savaşlardaki ölümler getirilmez; open world gankleri böyle elenir. Boş = parti büyüklüğü ({{ $link->maxSlots() }}).</div>
             </form>
         </details>
     </div>
@@ -141,7 +163,9 @@
                 @elseif($scanFailed)
                     <span style="color: var(--bad);">Getirilemedi: {{ \Illuminate\Support\Str::after($link->regear_scan_status, 'failed: ') }}</span>
                 @elseif($scanned)
-                    Son: {{ $link->regear_scanned_at->locale('tr')->diffForHumans() }} · {{ \Illuminate\Support\Str::after($link->regear_scan_status, 'done: ') }}
+                    @php [$scanSummary, $scanWarning] = array_pad(explode(' ⚠️ ', \Illuminate\Support\Str::after($link->regear_scan_status, 'done: '), 2), 2, null); @endphp
+                    Son: {{ $link->regear_scanned_at->locale('tr')->diffForHumans() }} · {{ $scanSummary }}
+                    @if($scanWarning)<div style="color: var(--warn); margin-top: 4px;">⚠️ {{ $scanWarning }}</div>@endif
                 @elseif(! $hasWindow)
                     Önce etkinlik zamanını kaydet.
                 @endif
@@ -155,7 +179,15 @@
         <p class="card-hint" style="margin-bottom: 6px;">
             {{ $link->hasRegearOverride() ? 'Bu event için özel kurallar:' : 'Guild varsayılanları:' }}
             <b>{{ $payouts->isEmpty() ? 'payout girilmemiş' : $payouts->implode(' · ') }}</b> · {{ $tierText }}
+            @if($rules['limits']['max_per_player']) · oyuncu başına en fazla {{ $rules['limits']['max_per_player'] }} @endif
+            @if($rules['limits']['min_item_power']) · min {{ $rules['limits']['min_item_power'] }} IP @endif
         </p>
+        @if($mainEnemies)
+            <p class="card-hint" style="margin-bottom: 6px;">⚔️ Ana rakip:
+                @foreach($mainEnemies as $enemy)<b>{{ $enemy['label'] }}</b> <span class="muted">({{ $enemy['kills'] }} kill)</span>@if(! $loop->last) · @endif @endforeach
+                <span class="muted">— başkasının öldürdüğü ölümler işaretlenir.</span>
+            </p>
+        @endif
         <details>
             <summary>Bu event için farklı tutar / tier kullan</summary>
             <form method="POST" action="{{ route('party.regear.rules', $link) }}" style="margin-top: 12px;">
@@ -170,6 +202,9 @@
                 </div>
                 <div style="margin-top: 16px;">
                     @include('partials.tier-matrix', ['minTier' => $rules['min_tier']])
+                </div>
+                <div style="margin-top: 16px;">
+                    @include('partials.regear-limits', ['limits' => $rules['limits']])
                 </div>
                 <div class="row" style="margin-top: 12px;">
                     <button type="submit" class="btn primary">Bu event için kaydet</button>
@@ -204,17 +239,27 @@
                 <div class="who">
                     <div class="avatar">{{ mb_strtoupper(mb_substr($claim->victim_name, 0, 1)) }}</div>
                     <div>
-                        <div class="name">{{ $claim->victim_name }}</div>
+                        <div class="name">{{ $claim->victim_name }}@if($claim->victim_guild_id && $guildId && $claim->victim_guild_id !== $guildId) <span class="pill info" style="font-size: 11px;" title="Alliance üyesi">🤝 {{ $claim->victim_guild }}</span>@endif</div>
                         <div class="meta">
-                            @if($claim->attendee?->slot_index)
-                                <span class="pill info">Slot {{ $claim->attendee->slot_index }} · {{ $roleLabels[$claim->role_type] ?? 'Flex' }}</span>
+                            @if($claim->slot_index)
+                                <span class="pill info" title="Öldüğü anda bulunduğu slot">Slot {{ $claim->slot_index }} · {{ $roleLabels[$claim->role_type] ?? 'Flex' }}</span>
                             @elseif($claim->attendee)
                                 <span class="pill warn">Waitlist</span>
                             @else
                                 <span class="pill warn">Roster'da yok</span>
                             @endif
                             <span>🕒 <span data-utc="{{ $claim->died_at->toIso8601ZuluString() }}" data-format="time"></span></span>
-                            @if($claim->killer_name)<span>🗡️ {{ $claim->killer_name }}@if($claim->killer_guild) · {{ $claim->killer_guild }}@endif</span>@endif
+                            @if($claim->killer_name)
+                                <span style="display:inline-flex; align-items:center; gap: 4px;">🗡️
+                                    @if($claim->killer_weapon)<img src="/item-icons/{{ $claim->killer_weapon }}.png" alt="" style="width: 20px; height: 20px;" loading="lazy" onerror="this.remove()">@endif
+                                    {{ $claim->killer_name }}@if($claim->killer_guild) · {{ $claim->killer_guild }}@endif @if($claim->killer_alliance)<span class="muted">[{{ $claim->killer_alliance }}]</span>@endif
+                                </span>
+                            @endif
+                            @if($claim->battle_size)<span>👥 {{ $claim->battle_size }} kişilik savaş</span>@endif
+                            @if($past = $history[mb_strtolower($claim->victim_name)] ?? null)
+                                <a href="{{ route('regear.player', $claim->victim_name) }}" class="pill {{ $past['rejected'] ? 'warn' : '' }}" style="text-decoration: none;"
+                                   title="Diğer event'lerde: {{ $past['events'] }} event, {{ $past['deaths'] }} ölüm, {{ $past['approved'] }} onay, {{ $past['rejected'] }} red">📒 Geçmiş: {{ $past['deaths'] }} ölüm · {{ $past['approved'] }} onay{{ $past['rejected'] ? ' · '.$past['rejected'].' red' : '' }} · {{ RegearClaim::formatSilver($past['silver']) }}</a>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -230,6 +275,16 @@
                     @endif
                 </div>
             </div>
+
+            @foreach($elsewhere[$claim->event_id] ?? [] as $other)
+                <div class="notice {{ $other->status === 'approved' ? 'bad' : 'warn' }}" style="margin: 10px 0 0; padding: 8px 12px; font-size: 13px;">
+                    🔁 Bu ölüm <a href="{{ route('party.regear', $other->link) }}">{{ $other->link?->title }}</a> partisinde de var
+                    @if($other->paid_at) — <b>orada ödendi</b>, burada onaylanamaz.
+                    @elseif($other->status === 'approved') — <b>orada onaylandı</b>, burada onaylanamaz.
+                    @else <span>(orada henüz karar verilmedi).</span>
+                    @endif
+                </div>
+            @endforeach
 
             <div class="verdict">
                 @if(empty($claim->warnings))
@@ -274,9 +329,17 @@
                         <input class="amount" type="text" name="amount" value="{{ RegearClaim::formatSilver($claim->suggested_amount) }}" title="1.2m, 900k veya 1200000">
                         <button type="submit" name="action" value="approve" class="btn ok sm">✓ Onayla</button>
                         <button type="submit" name="action" value="reject" class="btn bad sm">Reddet</button>
+                        <input class="reason" type="text" name="reason" maxlength="200" placeholder="Red sebebi (oyuncu görür, isteğe bağlı)" style="min-width: 220px; flex: 1;">
                         <span class="muted" style="font-size: 12px;">önerilen {{ RegearClaim::formatSilver($claim->suggested_amount) }}</span>
                     @else
-                        <span class="muted" style="font-size: 13px;">{{ $statusLabels[$claim->status] }}@if($claim->decider) · {{ $claim->decider->name }}, {{ $claim->decided_at?->locale('tr')->diffForHumans() }}@endif</span>
+                        <span class="muted" style="font-size: 13px;">{{ $statusLabels[$claim->status] }}@if($claim->reject_reason) — <i>{{ $claim->reject_reason }}</i>@endif @if($claim->decider) · {{ $claim->decider->name }}, {{ $claim->decided_at?->locale('tr')->diffForHumans() }}@endif</span>
+                        @if($claim->notify_error)
+                            <span class="pill warn" title="Discord bildirimi">⚠️ {{ ['dm_closed' => 'DM kapalı', 'no_discord' => 'Discord hesabı yok', 'failed' => 'Bildirim gönderilemedi'][$claim->notify_error] ?? $claim->notify_error }}</span>
+                        @elseif($claim->notified_at && ! $claim->needsNotification())
+                            <span class="pill" title="Oyuncuya Discord'dan bildirildi">📨 bildirildi</span>
+                        @elseif($claim->notified_at)
+                            <span class="pill info" title="Karar bildirildikten sonra değişti">📨 değişiklik bildirilmedi</span>
+                        @endif
                         <button type="submit" name="action" value="reset" class="btn ghost sm">↺ Geri al</button>
                     @endif
                 </form>
@@ -302,10 +365,27 @@
             <div>
                 <div class="muted" style="font-size: 12px;">Ödenecek (onaylı, henüz ödenmemiş)</div>
                 <div class="big">{{ RegearClaim::formatSilver($totals['unpaid_silver']) }} <span class="muted" style="font-size: 13px; font-weight: 500;">· {{ $unpaidPlayers }} oyuncu · bekleyen {{ $totals['pending'] }}</span></div>
+                @if($notify['configured'])
+                    <div class="muted" style="font-size: 12px; margin-top: 2px;">
+                        📨 {{ $notify['sent'] }} oyuncuya Discord'dan bildirildi{{ $notify['pending'] ? ' · '.$notify['pending'].' oyuncunun yeni kararı bildirilmedi' : '' }}
+                        @foreach(['dm_closed' => 'DM kapalı', 'no_discord' => 'Discord hesabı bulunamadı', 'failed' => 'gönderilemedi'] as $error => $label)
+                            @if($names = $notify['unreachable'][$error] ?? null)
+                                · <span style="color: var(--warn);" title="{{ $names->implode(', ') }}">⚠️ {{ $label }}: {{ $names->count() }}</span>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
             </div>
             <div class="row" style="align-items:center;">
                 <textarea id="payoutList" hidden>{{ $payoutList }}</textarea>
                 <button type="button" class="btn" id="copyPayouts" @disabled($payoutList === '')>📋 Ödeme listesini kopyala</button>
+                @if($notify['configured'])
+                    <form method="POST" action="{{ route('party.regear.notify', $link) }}" style="margin:0;"
+                          onsubmit="return confirm('Kararı verilmiş {{ $notify['pending'] }} oyuncuya regear sonucu Discord DM ile gönderilsin mi?');">
+                        @csrf
+                        <button type="submit" class="btn" @disabled(! $notify['pending']) title="Her oyuncuya tek mesaj: onaylanan tutar, reddedilenler ve sebepleri. Sadece yeni / değişen kararlar gönderilir.">📨 Oyunculara bildir{{ $notify['pending'] ? ' ('.$notify['pending'].')' : '' }}</button>
+                    </form>
+                @endif
                 <form method="POST" action="{{ route('party.regear.paid', $link) }}" style="margin:0;" onsubmit="return confirm('Onaylı ve ödenmemiş tüm regear\'lar ödendi olarak işaretlensin mi?');">
                     @csrf
                     <button type="submit" class="btn primary" @disabled(! $totals['unpaid_silver'])>💸 Ödendi olarak işaretle</button>
@@ -315,16 +395,19 @@
     </div>
 @endif
 
+@include('partials.local-time')
 <script>
 (function () {
     const pad = (n) => String(n).padStart(2, '0');
     const toLocalInput = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    const fmt = { datetime: { day: 'numeric', month: 'long', weekday: 'short', hour: '2-digit', minute: '2-digit' }, time: { hour: '2-digit', minute: '2-digit' } };
 
-    // Show every UTC timestamp in the viewer's own timezone.
-    document.querySelectorAll('[data-utc]').forEach((el) => {
-        el.textContent = new Date(el.dataset.utc).toLocaleString('tr-TR', fmt[el.dataset.format] || fmt.datetime);
-    });
+    // Enter in the reject reason rejects (the form's first button would approve).
+    document.querySelectorAll('.decide .reason').forEach((input) => input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            input.form.querySelector('button[value="reject"]').click();
+        }
+    }));
 
     const form = document.getElementById('windowForm');
     if (form) {

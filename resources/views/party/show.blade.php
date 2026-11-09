@@ -64,6 +64,7 @@
         <div class="modal-content">
             <span class="close-btn" data-close-modal>&times;</span>
             <h2>Join Party</h2>
+            @include('party._overlap-notice')
 
             @if(! $link->isContent())
                 <div style="background: rgba(99, 102, 241, 0.1); border-left: 3px solid #6366f1; padding: 10px; margin-bottom: 20px; border-radius: 4px;">
@@ -91,6 +92,7 @@
                 @csrf
                 <label style="color: #fbbf24; font-weight: bold;">In-Game Name (IGN)</label>
                 <input type="text" name="in_game_name" placeholder="Exact character name..." value="{{ old('in_game_name', $lastIgn) }}" required maxlength="20" class="role-input" style="border-color: #fbbf24;">
+                @include('party._ign-confirm')
 
                 <label>Note <span style="color:#888; font-weight: normal;">(optional — e.g. "can swap", "can fill carving")</span></label>
                 <input type="text" name="note" value="{{ old('note') }}" maxlength="100" class="role-input" placeholder="Anything the caller should know...">
@@ -124,6 +126,7 @@
             <span class="close-btn" data-close-modal>&times;</span>
             <h2>Claim slot <span id="claimSlotNumber"></span></h2>
             <div id="claimSlotRole" style="color:#fbbf24; font-weight:bold; margin-bottom: 15px;"></div>
+            @include('party._overlap-notice')
             @if ($errors->any() && old('slot'))
                 <div class="join-errors">
                     @foreach ($errors->all() as $error)<div>{{ $error }}</div>@endforeach
@@ -134,6 +137,7 @@
                 <input type="hidden" name="slot" id="claimSlotInput" value="{{ old('slot') }}">
                 <label style="color: #fbbf24; font-weight: bold;">In-Game Name (IGN)</label>
                 <input type="text" name="in_game_name" value="{{ old('in_game_name', $lastIgn) }}" required maxlength="20" class="role-input" placeholder="Exact character name..." style="border-color: #fbbf24;">
+                @include('party._ign-confirm')
                 <label>Note <span style="color:#888; font-weight: normal;">(optional)</span></label>
                 <input type="text" name="note" value="{{ old('note') }}" maxlength="100" class="role-input" placeholder="e.g. can swap">
                 <button type="submit" class="btn-join" style="margin-top: 10px;">{{ $link->isContent() ? 'Take this slot' : 'Claim (caller confirms)' }}</button>

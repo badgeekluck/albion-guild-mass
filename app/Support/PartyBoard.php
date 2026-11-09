@@ -4,10 +4,15 @@ namespace App\Support;
 
 use App\Models\GameRole;
 use App\Models\LinkAttendee;
+use App\Models\PartyTemplate;
 use App\Models\SavedBuild;
 use App\Models\SharedLink;
+use App\Models\SlotHistory;
 use App\Models\User;
+use App\Services\Albion\GuildMemberDirectory;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Everything the party screen needs, computed once in PHP instead of inside Blade.
@@ -50,13 +55,37 @@ class PartyBoard
 
     public int $pendingClaimCount = 0;
 
+    /** @var array<string, true>|null lower-cased guild member names (callers only; null = unknown) */
+    private ?array $memberNames = null;
+
+    /** @var array<string, true> lower-cased IGNs of this party that other Discord accounts have used too */
+    private array $sharedIgns = [];
+
+    /** @return Collection<int, PartyTemplate> templates a manager can (re)apply */
+    public function templateOptions()
+    {
+        return $this->canManage && $this->link->acceptsChanges()
+            ? PartyTemplate::orderBy('name')->get(['id', 'name', 'size'])
+            : collect();
+    }
+
+    /** Other parties at the same time the viewer is registered to. */
+    public EloquentCollection $overlapping;
+
     public function __construct(public SharedLink $link, public ?User $viewer)
     {
         $link->loadMissing('attendees.user');
+        $this->overlapping = $viewer ? $link->overlappingFor($viewer) : new EloquentCollection;
 
         $this->canArrange = (bool) $viewer?->can('arrange', $link);
         $this->canManage = (bool) $viewer?->can('manage', $link);
         $this->canSaveTemplate = (bool) $viewer?->can('saveAsTemplate', $link);
+
+        if ($this->canArrange) {
+            $names = app(GuildMemberDirectory::class)->names($link->regear_include_alliance);
+            $this->memberNames = $names === null ? null : array_fill_keys(array_map('mb_strtolower', $names), true);
+            $this->sharedIgns = $this->findSharedIgns($link);
+        }
 
         $attendees = $link->attendees;
         $bySlot = $attendees->whereNotNull('slot_index')->keyBy('slot_index');
@@ -151,6 +180,37 @@ class PartyBoard
         }
     }
 
+    /** For callers: the IGN is not in the guild member list, so regear won't find this player's deaths. */
+    public function isUnknownMember(LinkAttendee $attendee): bool
+    {
+        return $this->memberNames !== null && $attendee->in_game_name
+            && ! isset($this->memberNames[mb_strtolower($attendee->in_game_name)]);
+    }
+
+    /** For callers: this character name was also used by another Discord account (any party). */
+    public function isSharedIgn(LinkAttendee $attendee): bool
+    {
+        return isset($this->sharedIgns[mb_strtolower((string) $attendee->in_game_name)]);
+    }
+
+    /** @return array<string, true> */
+    private function findSharedIgns(SharedLink $link): array
+    {
+        $igns = $link->attendees->pluck('in_game_name')->filter()->map(fn ($n) => mb_strtolower($n))->unique()->values()->all();
+        if (! $igns) {
+            return [];
+        }
+
+        // Registrations plus slot history (it survives kicks and leaves).
+        $pairs = LinkAttendee::query()->whereIn(DB::raw('LOWER(in_game_name)'), $igns)->get(['in_game_name', 'user_id'])
+            ->concat(SlotHistory::query()->whereIn(DB::raw('LOWER(in_game_name)'), $igns)->whereNotNull('user_id')->get(['in_game_name', 'user_id']));
+
+        return $pairs->groupBy(fn ($p) => mb_strtolower($p->in_game_name))
+            ->filter(fn ($group) => $group->pluck('user_id')->unique()->count() > 1)
+            ->map(fn () => true)
+            ->all();
+    }
+
     public function canDrag(LinkAttendee $attendee): bool
     {
         if (! $this->viewer || ! $this->link->acceptsChanges()) {
@@ -170,12 +230,11 @@ class PartyBoard
      */
     private function loadBuilds(SharedLink $link): array
     {
-        $ids = collect($link->templateSlots())->pluck('build_id')->filter()->unique()->values();
-        if ($ids->isEmpty()) {
+        $builds = $link->resolveBuilds()->values();
+        if ($builds->isEmpty()) {
             return [];
         }
-
-        $builds = SavedBuild::with(array_keys(SavedBuild::SLOT_CATEGORIES))->whereIn('id', $ids)->get();
+        $builds = (new EloquentCollection($builds->all()))->load(array_keys(SavedBuild::SLOT_CATEGORIES));
 
         // Load every swap item once instead of per build.
         $swapItemIds = $builds->flatMap(fn (SavedBuild $b) => array_column(array_filter((array) $b->swaps, 'is_array'), 'item_id'))->filter()->unique();

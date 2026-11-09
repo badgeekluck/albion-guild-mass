@@ -18,7 +18,7 @@
             <h1>⚙️ Regear Ayarları</h1>
             <div class="subtitle">Bütün partiler bu ayarları kullanır. Tek bir event için farklı tutar istersen o partinin regear sayfasından değiştirebilirsin.</div>
         </div>
-        <div class="links"><a href="{{ route('dashboard') }}">⬅ Dashboard</a></div>
+        <div class="links"><a href="{{ route('regear.players') }}">📒 Regear geçmişi</a><a href="{{ route('dashboard') }}">⬅ Dashboard</a></div>
     </div>
 
     @if(session('success'))<div class="notice ok">{{ session('success') }}</div>@endif
@@ -102,10 +102,94 @@
             @include('partials.tier-matrix', ['minTier' => $rules['min_tier'], 'disabled' => ! $canEdit])
         </div>
 
+        <div class="card">
+            <div class="card-title"><span class="step done">4</span> Limitler <span class="muted" style="font-weight: 400; font-size: 13px;">(isteğe bağlı)</span></div>
+            @include('partials.regear-limits', ['limits' => $rules['limits'], 'disabled' => ! $canEdit])
+        </div>
+
         @if($canEdit)
             <button type="submit" class="btn primary">💾 Kaydet</button>
         @endif
     </form>
+
+    {{-- Gank weapons --}}
+    <form method="POST" action="{{ route('settings.regear.gank') }}" class="card" id="gankForm" style="margin-top: 16px;">
+        @csrf @method('PUT')
+        <div class="card-title"><span class="step {{ $gankWeapons->isNotEmpty() ? 'done' : '' }}">4</span> Gank silahları</div>
+        <p class="card-hint">Gankerların sık kullandığı silahları seç. Bir oyuncu bu silahlardan biriyle öldürüldüyse inceleme ekranında "gank silahıyla öldürüldü" uyarısı çıkar (event dışı bir ölüm olabilir).</p>
+        <div class="chips" id="gankChips" style="margin-bottom: 12px;">
+            @foreach($gankWeapons as $weapon)
+                <span class="chip active" data-id="{{ $weapon->id }}">
+                    <input type="hidden" name="gank_weapons[]" value="{{ $weapon->id }}">
+                    @if($weapon->iconUrl())<img src="{{ $weapon->iconUrl() }}" alt="" style="width: 18px; height: 18px; vertical-align: middle;">@endif
+                    {{ $weapon->name }} @if($canEdit)<button type="button" data-remove style="background:none; border:none; color: var(--muted); cursor:pointer;">✕</button>@endif
+                </span>
+            @endforeach
+            <span class="muted" id="gankEmpty" style="{{ $gankWeapons->isEmpty() ? '' : 'display:none' }}">Henüz seçilmedi.</span>
+        </div>
+        @if($canEdit)
+            <div class="row">
+                <div class="field" style="flex: 1; min-width: 220px;">
+                    <label for="gankInput">Silah ekle</label>
+                    <input id="gankInput" list="weaponList" placeholder="örn. Bloodletter, Dagger Pair, Claws…" style="width: 100%;" autocomplete="off">
+                    <datalist id="weaponList">
+                        @foreach($weaponOptions as $weapon)<option value="{{ $weapon->name }}" data-id="{{ $weapon->id }}"></option>@endforeach
+                    </datalist>
+                </div>
+                <button type="button" class="btn" id="gankAdd">+ Ekle</button>
+                <button type="submit" class="btn primary">💾 Kaydet</button>
+            </div>
+        @endif
+    </form>
+
+    @if($recentChanges->isNotEmpty())
+        <div class="card" style="margin-top: 16px;">
+            <div class="card-title">📜 Son değişiklikler</div>
+            <p class="card-hint">Ayarlar, build ve template değişiklikleri. Parti içindeki işlemler her partinin <b>Activity log</b> sayfasında.</p>
+            <ul style="list-style: none; margin: 0; padding: 0; font-size: 13px;">
+                @foreach($recentChanges as $entry)
+                    <li style="display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line);">
+                        <span class="muted" style="min-width: 92px;" data-utc="{{ $entry->created_at->toIso8601ZuluString() }}" data-format="short">{{ $entry->created_at->utc()->format('d.m H:i') }}</span>
+                        <span>{{ $entry->summary }}</span>
+                        <span class="muted" style="margin-left: auto; white-space: nowrap;">{{ $entry->user?->name ?? 'sistem' }}</span>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 </div>
+
+@include('partials.local-time')
+<script>
+(function () {
+    const chips = document.getElementById('gankChips');
+    const input = document.getElementById('gankInput');
+    if (!chips || !input) return;
+    const options = Object.fromEntries([...document.querySelectorAll('#weaponList option')].map((o) => [o.value.toLowerCase(), o.dataset.id]));
+    const empty = document.getElementById('gankEmpty');
+    const refresh = () => (empty.style.display = chips.querySelector('[data-id]') ? 'none' : '');
+
+    function add() {
+        const name = input.value.trim();
+        const id = options[name.toLowerCase()];
+        if (!id || chips.querySelector(`[data-id="${id}"]`)) { input.select(); return; }
+        const chip = document.createElement('span');
+        chip.className = 'chip active';
+        chip.dataset.id = id;
+        const hidden = Object.assign(document.createElement('input'), { type: 'hidden', name: 'gank_weapons[]', value: id });
+        const remove = Object.assign(document.createElement('button'), { type: 'button', textContent: '✕' });
+        remove.dataset.remove = '';
+        remove.style.cssText = 'background:none; border:none; color: var(--muted); cursor:pointer;';
+        chip.append(hidden, `${name} `, remove);
+        chips.insertBefore(chip, empty);
+        input.value = '';
+        refresh();
+    }
+
+    document.getElementById('gankAdd').addEventListener('click', add);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    chips.addEventListener('click', (e) => { if (e.target.closest('[data-remove]')) { e.target.closest('[data-id]').remove(); refresh(); } });
+})();
+</script>
 </body>
 </html>

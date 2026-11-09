@@ -93,7 +93,16 @@
                         Click a slot, then pick a build on the right (or drag a build onto a slot). Drag ⠿ to swap two slots.
                     </p>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 4px;" title="Slot count. Changing it saves the template. Open parties made from it that haven't started yet are updated too.">
+                        <span style="font-size: 12px; color: #9ca3af; margin-right: 2px;">Slots</span>
+                        <button type="button" class="ui-btn ui-btn--sm" data-size-step="-20" aria-label="Remove a party (20 slots)">−20</button>
+                        <button type="button" class="ui-btn ui-btn--sm" data-size-step="-1" aria-label="Remove one slot">−1</button>
+                        <input type="number" name="size" id="templateSize" min="1" max="{{ \App\Models\PartyTemplate::MAX_SIZE }}" value="{{ $totalSlots }}"
+                               style="width: 58px; height: 30px; text-align: center; box-sizing: border-box;">
+                        <button type="button" class="ui-btn ui-btn--sm" data-size-step="1" aria-label="Add one slot">+1</button>
+                        <button type="button" class="ui-btn ui-btn--sm" data-size-step="20" aria-label="Add a party (20 slots)">+20</button>
+                    </div>
                     <a href="{{ route('templates.index') }}" class="ui-btn ui-btn--ghost ui-btn--lg">Cancel</a>
                     <input type="text" name="name" value="{{ old('name', $template->name) }}" required maxlength="255"
                            style="background: #374151; border:1px solid #4b5563; height: 42px; padding: 0 12px; width: 240px; font-size: 14px; box-sizing: border-box; border-radius: 8px;">
@@ -379,6 +388,27 @@
         ['tank', 'heal', 'supp', 'dps', 'mount', 'any'].forEach((t) => counts[t] && add(TYPE_LABELS[t], counts[t]));
         add('🛠️ With build', `${withBuild}/${rows.length}`);
     }
+
+    // ------------------------------------------------------------ slot count (saves the form, the page reloads with the new size)
+    const form = document.getElementById('templateForm');
+    const sizeInput = document.getElementById('templateSize');
+    const maxSize = Number(sizeInput.max);
+
+    document.querySelectorAll('[data-size-step]').forEach((button) => {
+        button.addEventListener('click', () => {
+            sizeInput.value = Math.min(maxSize, Math.max(1, rows.length + Number(button.dataset.sizeStep)));
+            if (Number(sizeInput.value) !== rows.length) form.requestSubmit();
+        });
+    });
+
+    form.addEventListener('submit', (event) => {
+        const size = Number(sizeInput.value) || rows.length;
+        const lost = rows.slice(size).filter((row) => row.querySelector('.f-build').value || row.querySelector('.f-role').value.trim() || row.querySelector('.f-note').value.trim());
+        if (lost.length && !confirm(`Slots ${size + 1}–${rows.length} will be removed, ${lost.length} of them are filled in. Continue?`)) {
+            event.preventDefault();
+            sizeInput.value = rows.length;
+        }
+    });
 
     renderLibrary();
     updateCounters();

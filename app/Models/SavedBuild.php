@@ -51,6 +51,30 @@ class SavedBuild extends Model
         'swaps' => 'array',
     ];
 
+    /** Changing these doesn't change what players wear. */
+    private const NON_GEAR_FIELDS = ['updated_at', 'updated_by', 'created_by', 'import_key'];
+
+    protected static function booted(): void
+    {
+        // Events that are already over keep the version of the build they were played with.
+        static::updating(function (SavedBuild $build) {
+            if (array_diff(array_keys($build->getDirty()), self::NON_GEAR_FIELDS)) {
+                $build->freezeInFinishedEvents();
+            }
+        });
+        static::deleting(fn (SavedBuild $build) => $build->freezeInFinishedEvents());
+    }
+
+    private function freezeInFinishedEvents(): void
+    {
+        $original = $this->getRawOriginal();
+
+        SharedLink::query()
+            ->where(fn ($q) => $q->where('status', SharedLink::STATUS_COMPLETED)->orWhere('ends_at', '<', now()))
+            ->where('template_snapshot', 'like', '%build_id%')
+            ->each(fn (SharedLink $link) => $link->freezeBuild((int) $this->getKey(), $original));
+    }
+
     public function weapon(): BelongsTo
     {
         return $this->belongsTo(GameRole::class, 'weapon_id');

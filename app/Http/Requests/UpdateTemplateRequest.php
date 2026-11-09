@@ -18,7 +18,9 @@ class UpdateTemplateRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'briefing' => ['nullable', 'string', 'max:2000'],
-            'slots' => ['required', 'array', 'max:100'],
+            // The template can grow or shrink after creation (open parties that haven't started follow it).
+            'size' => ['nullable', 'integer', 'min:1', 'max:'.PartyTemplate::MAX_SIZE],
+            'slots' => ['required', 'array', 'max:'.PartyTemplate::MAX_SIZE],
             'slots.*.role' => ['nullable', 'string', 'max:100'],
             'slots.*.note' => ['nullable', 'string', 'max:255'],
             'slots.*.type' => ['required', Rule::in(PartyTemplate::SLOT_TYPES)],
@@ -27,7 +29,7 @@ class UpdateTemplateRequest extends FormRequest
     }
 
     /**
-     * Normalised structure keyed 1..N, only for slots that exist in the template.
+     * Normalised structure keyed 1..N for the (possibly new) size: new slots start empty, removed ones are dropped.
      *
      * @return array<int, array{role: string, note: string, type: string, build_id: int|null}>
      */
@@ -36,7 +38,7 @@ class UpdateTemplateRequest extends FormRequest
         $slots = $this->validated('slots');
         $structure = [];
 
-        for ($i = 1; $i <= $template->size; $i++) {
+        for ($i = 1; $i <= $this->size($template); $i++) {
             $slot = $slots[$i] ?? [];
             $structure[$i] = [
                 'role' => trim((string) ($slot['role'] ?? '')),
@@ -47,5 +49,10 @@ class UpdateTemplateRequest extends FormRequest
         }
 
         return $structure;
+    }
+
+    public function size(PartyTemplate $template): int
+    {
+        return (int) ($this->validated('size') ?? $template->size);
     }
 }

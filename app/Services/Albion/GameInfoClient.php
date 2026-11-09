@@ -63,13 +63,33 @@ class GameInfoClient
         return array_values((array) ($this->get('/search', ['q' => $name])['guilds'] ?? []));
     }
 
+    /** @return array<string, mixed> guild profile (Name, AllianceId, AllianceTag, MemberCount, ...) */
+    public function guild(string $guildId): array
+    {
+        return (array) $this->get("/guilds/{$guildId}");
+    }
+
+    /** @return array<string, mixed> alliance profile (AllianceName, AllianceTag, Guilds: list<{Id, Name}>) */
+    public function alliance(string $allianceId): array
+    {
+        return (array) $this->get("/alliances/{$allianceId}");
+    }
+
+    /** @return list<string> character names of the guild's current members */
+    public function guildMemberNames(string $guildId): array
+    {
+        return array_values(array_filter(array_map(fn ($m) => $m['Name'] ?? null, (array) $this->get("/guilds/{$guildId}/members"))));
+    }
+
     /**
      * Guild battles overlapping [from, to], newest first.
      *
+     * @param  bool|null  $truncated  set to true when the page limit ran out before reaching $from
      * @return list<array<string, mixed>>
      */
-    public function guildBattles(string $guildId, CarbonImmutable $from, CarbonImmutable $to, int $maxPages = 10): array
+    public function guildBattles(string $guildId, CarbonImmutable $from, CarbonImmutable $to, int $maxPages = 10, ?bool &$truncated = null): array
     {
+        $truncated = false;
         $battles = [];
         for ($page = 0; $page < $maxPages; $page++) {
             $rows = (array) $this->get('/battles', [
@@ -91,16 +111,24 @@ class GameInfoClient
             }
 
             if ($reachedOlder || count($rows) < self::PAGE_SIZE) {
-                break;
+                return array_values($battles);
             }
         }
+
+        $truncated = true;
 
         return array_values($battles);
     }
 
-    /** @return list<array<string, mixed>> every kill event of a battle */
-    public function battleEvents(int $battleId, int $maxPages = 40): array
+    /**
+     * Every kill event of a battle.
+     *
+     * @param  bool|null  $truncated  set to true when the battle has more events than $maxPages pages
+     * @return list<array<string, mixed>>
+     */
+    public function battleEvents(int $battleId, int $maxPages = 40, ?bool &$truncated = null): array
     {
+        $truncated = false;
         $events = [];
         for ($page = 0; $page < $maxPages; $page++) {
             $rows = (array) $this->get("/events/battle/{$battleId}", ['offset' => $page * self::PAGE_SIZE, 'limit' => self::PAGE_SIZE]);
@@ -108,9 +136,11 @@ class GameInfoClient
                 $events[$event['EventId']] = $event;
             }
             if (count($rows) < self::PAGE_SIZE) {
-                break;
+                return array_values($events);
             }
         }
+
+        $truncated = true;
 
         return array_values($events);
     }

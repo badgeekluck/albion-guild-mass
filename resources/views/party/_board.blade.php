@@ -62,7 +62,17 @@
                 @endif
 
                 @if($canToggleAttendance)
-                    <span class="pill info">Check-in: use ✔ / ✘ next to each player</span>
+                    <span class="pill info">Check-in: use ✔ / ✘ next to each player{{ $link->hasBattlePlayers() ? ' · ⚔️ seen in battle · ❓ not on the killboard' : '' }}</span>
+                    @if($link->hasBattlePlayers() && ($unregistered = $link->unregisteredFighters()))
+                        <details class="menu">
+                            <summary class="small-btn" title="Guild members who fought in the event's battles without signing up">⚔️ Fought without signing up ({{ count($unregistered) }})</summary>
+                            <div class="menu-list" style="max-height: 320px; overflow: auto; padding: 8px 12px; font-size: 13px;">
+                                @foreach($unregistered as $fighter)
+                                    <div style="padding: 3px 0;">{{ $fighter['name'] }} <span class="muted">· {{ $fighter['battles'] }} battle(s), {{ $fighter['kills'] }}/{{ $fighter['deaths'] }} K/D</span></div>
+                                @endforeach
+                            </div>
+                        </details>
+                    @endif
                 @endif
 
                 @if($board->canManage || $board->canSaveTemplate)
@@ -71,6 +81,31 @@
                         <div class="menu-list">
                             @if($board->canManage)
                                 <a href="{{ route('party.regear', $link) }}">💰 Regear / payouts</a>
+                                <a href="{{ route('party.activity', $link) }}">📜 Activity log</a>
+                                @if(($templates = $board->templateOptions())->isNotEmpty())
+                                    <form action="{{ route('party.apply-template', $link) }}" method="POST" class="apply-template"
+                                          onsubmit="return confirm('Replace this party\'s slots, builds and briefing with the selected template? Players keep their slot; slots that no longer exist send their players to the waitlist.');">
+                                        @csrf
+                                        <select name="template_id" aria-label="Template" style="width: 100%; margin-bottom: 4px;">
+                                            @foreach($templates as $template)
+                                                <option value="{{ $template->id }}" @selected($template->id === $link->party_template_id)>{{ $template->name }} ({{ $template->size }})</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="submit">🔄 {{ $link->party_template_id ? 'Re-apply / change template' : 'Apply template' }}</button>
+                                    </form>
+                                @endif
+                                @if($link->acceptsChanges())
+                                    <form action="{{ route('party.registration', $link) }}" method="POST">
+                                        @csrf <input type="hidden" name="action" value="extend">
+                                        <button type="submit">⏰ {{ $link->registrationClosed() ? 'Reopen registration for 1h' : 'Extend registration +1h' }}</button>
+                                    </form>
+                                    @unless($link->registrationClosed())
+                                        <form action="{{ route('party.registration', $link) }}" method="POST" onsubmit="return confirm('Close sign-ups now?');">
+                                            @csrf <input type="hidden" name="action" value="close">
+                                            <button type="submit">🔒 Close registration now</button>
+                                        </form>
+                                    @endunless
+                                @endif
                             @endif
                             @if($canPing ?? false)
                                 <form action="{{ route('party.ping', $link) }}" method="POST" onsubmit="return confirm('Ping every placed player in the Discord channel?');">
@@ -102,6 +137,9 @@
                 @endif
                 @if($link->isCompleted())
                     <span class="pill ok" style="margin-left: 6px;">✅ Attended {{ $link->attendees->where('attended', true)->count() }}</span>
+                    @if($link->hasBattlePlayers())
+                        <span class="pill info" style="margin-left: 6px;" title="Players of this roster seen on the killboard in the event's battles (regear scan)">⚔️ On killboard {{ $link->attendees->filter(fn ($a) => $link->battlePlayer($a->in_game_name))->count() }}/{{ $link->attendees->count() }}</span>
+                    @endif
                 @endif
             </div>
             @foreach($board->summary as $chip)
@@ -177,10 +215,10 @@
                                     @if($attendee)
                                         <div class="player-card {{ $slot['can_drag'] ? 'draggable-enabled' : '' }}"
                                              draggable="{{ $slot['can_drag'] ? 'true' : 'false' }}"
-                                             data-attendee-id="{{ $attendee->id }}">
+                                             data-attendee-id="{{ $attendee->id }}" data-name="{{ $attendee->displayName() }}">
                                             @if($slot['is_me'])<span class="you-badge">YOU</span>@endif
                                             <div class="slot-user">
-                                                <span class="pname">{{ $attendee->displayName() }}@if($attendee->note) <span class="attendee-note" title="{{ $attendee->note }}">📝</span>@endif</span>
+                                                <span class="pname">{{ $attendee->displayName() }}@if($attendee->note) <span class="attendee-note" title="{{ $attendee->note }}">📝</span>@endif @if($board->isUnknownMember($attendee))<span title="Not in the guild member list — check the in-game name, regear can't match it">⚠️</span>@endif @if($board->isSharedIgn($attendee))<span title="This character name was also used by another Discord account">👥</span>@endif</span>
                                                 @if($slot['show_warning'])
                                                     <span class="psub role-warning" title="Registered: {{ implode(', ', $attendee->roleNames()) }}">⚠️ not their role</span>
                                                 @elseif($attendee->in_game_name && $attendee->in_game_name !== $attendee->user?->name)
@@ -237,6 +275,7 @@
         {{-- Everything the viewer needs about themselves --}}
         <div class="panel you-card">
             <div class="panel-title">You</div>
+            @include('party._overlap-notice')
 
             @if($link->isCompleted())
                 <div class="who">⛔ Event is over</div>
@@ -312,14 +351,17 @@
                 <span>Waitlist / backups</span>
                 <span>{{ $board->waitlist->count() }}</span>
             </div>
+            @if($board->canArrange && $link->acceptsChanges())
+                <div class="muted" style="font-size: 11px; margin: -4px 0 8px;">📱 Telefonda: oyuncuya dokun, sonra slota dokun.</div>
+            @endif
             <div class="waitlist-area" data-slot="0">
                 @forelse($board->waitlist as $att)
                     @php $canDrag = $board->canDrag($att); @endphp
                     <div class="waitlist-item {{ $att->isBombsquad() ? 'bombsquad-wait' : '' }} {{ $canDrag ? 'draggable-enabled' : '' }}"
                          draggable="{{ $canDrag ? 'true' : 'false' }}"
-                         data-attendee-id="{{ $att->id }}">
+                         data-attendee-id="{{ $att->id }}" data-name="{{ $att->displayName() }}">
                         <div style="display:flex; justify-content: space-between; gap: 6px; font-weight: 700; font-size: 13px;">
-                            <span>{{ $att->displayName() }}@if($att->in_game_name && $att->in_game_name !== $att->user?->name) <span style="font-size: 11px; color: var(--muted); font-weight: 400;">{{ $att->user?->name }}</span>@endif</span>
+                            <span>{{ $att->displayName() }}@if($board->isUnknownMember($att)) <span title="Not in the guild member list — check the in-game name">⚠️</span>@endif @if($board->isSharedIgn($att))<span title="This character name was also used by another Discord account">👥</span>@endif @if($att->in_game_name && $att->in_game_name !== $att->user?->name) <span style="font-size: 11px; color: var(--muted); font-weight: 400;">{{ $att->user?->name }}</span>@endif</span>
                             <span style="display:flex; gap: 4px; align-items: center;">
                                 @if($att->claim_locked)<span class="pill warn" style="padding: 1px 6px; font-size: 10px;" title="Benched by a caller: can't pick a slot until placed again">🔒 benched</span>@endif
                                 @if($canToggleAttendance)
@@ -342,7 +384,7 @@
                         </div>
                     </div>
                 @empty
-                    <div class="waitlist-empty">{{ $board->canArrange ? 'Drag players here to bench them.' : 'No backups yet.' }}</div>
+                    <div class="waitlist-empty">{{ $board->canArrange ? 'Drag (or tap a player, then here) to bench them.' : 'No backups yet.' }}</div>
                 @endforelse
             </div>
         </div>

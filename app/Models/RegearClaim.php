@@ -22,6 +22,8 @@ class RegearClaim extends Model
         'died_at' => 'datetime',
         'decided_at' => 'datetime',
         'paid_at' => 'datetime',
+        'notified_at' => 'datetime',
+        'paid_notified_at' => 'datetime',
         'equipment' => 'array',
         'checks' => 'array',
         'warnings' => 'array',
@@ -43,6 +45,54 @@ class RegearClaim extends Model
     public function decider(): BelongsTo
     {
         return $this->belongsTo(User::class, 'decided_by');
+    }
+
+    /**
+     * The same killboard death listed in other parties (overlapping events), keyed by event id.
+     *
+     * @param  iterable<RegearClaim>  $claims
+     * @return array<int, list<RegearClaim>>
+     */
+    public static function elsewhere(iterable $claims, int $linkId): array
+    {
+        $eventIds = collect($claims)->pluck('event_id')->unique()->values();
+        if ($eventIds->isEmpty()) {
+            return [];
+        }
+
+        return static::with('link')
+            ->whereIn('event_id', $eventIds)
+            ->where('shared_link_id', '!=', $linkId)
+            ->get()
+            ->groupBy('event_id')
+            ->map(fn ($group) => $group->all())
+            ->all();
+    }
+
+    /** Another party already approved (or paid) this death. */
+    public function approvedElsewhere(): ?RegearClaim
+    {
+        return static::with('link')
+            ->where('event_id', $this->event_id)
+            ->where('shared_link_id', '!=', $this->shared_link_id)
+            ->where('status', self::APPROVED)
+            ->first();
+    }
+
+    /** The decision as the player would be told: changes when status, amount or reason change. */
+    public function decisionState(): ?string
+    {
+        return match ($this->status) {
+            self::APPROVED => 'approved:'.$this->payable(),
+            self::REJECTED => 'rejected:'.substr(md5((string) $this->reject_reason), 0, 8),
+            default => null,
+        };
+    }
+
+    /** Decided, and the player hasn't been told about this decision yet. */
+    public function needsNotification(): bool
+    {
+        return $this->decisionState() !== null && $this->decisionState() !== $this->notified_state;
     }
 
     public function isPending(): bool

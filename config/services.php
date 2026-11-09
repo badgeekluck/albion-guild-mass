@@ -61,7 +61,8 @@ return [
             'americas' => 'https://gameinfo.albiononline.com/api/gameinfo',
             'asia' => 'https://gameinfo-sgp.albiononline.com/api/gameinfo',
         ],
-        // Safety cap: pages of battle events fetched per scan (51 events per page).
+        // Safety caps (51 rows per page): pages of the guild's battle list, and of events per battle.
+        'max_battle_pages' => (int) env('ALBION_MAX_BATTLE_PAGES', 10),
         'max_pages_per_battle' => (int) env('ALBION_MAX_PAGES_PER_BATTLE', 40),
     ],
 

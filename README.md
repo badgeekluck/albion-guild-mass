@@ -15,17 +15,19 @@
 
 ## 🚀 Key Features
 
-* **🛡️ Visual Roster:** Parties side by side, updated live for every viewer (Laravel Reverb). Players **claim** open slots, callers confirm, drag & drop, bench or kick.
+* **🛡️ Visual Roster:** Parties side by side, updated live for every viewer (Laravel Reverb). Players **claim** open slots, callers confirm, drag & drop (or tap a player, then a slot on phones), bench or kick.
 * **✅ Role Validation:** Players register up to 4 weapons; slots are matched by weapon/build (not by fuzzy names) and mismatches are flagged.
 * **📊 Role Summary:** Live "Tank 2/4 · Healer 3/5 · DPS …" overview per party.
 * **💣 Dynamic Slots:** "Bomb Squad" / extra slots can be added instantly by callers.
 * **⏰ Registration Window:** Each party closes sign-ups after a configurable time.
-* **📊 Attendance System:** When an event is finished, placed players are checked in automatically; staff can correct it per player. Stats only count real attendance.
+* **📊 Attendance System:** When an event is finished, placed players are checked in automatically; staff can correct it per player. Stats only count real attendance. After a regear scan the killboard is used as evidence: players seen fighting are checked in (even from the waitlist), the rest are flagged for the caller, and guild members who fought without signing up are listed.
 * **💾 Templates & Builds:** Reusable party templates, saved builds with full equipment, and "save this roster as a template".
 * **🔁 Swaps & Enemy Situations:** Builds carry situational swaps (Kite / Monkey / Melee Clap / Castle / Brawl) and alternatives. The caller flips the enemy situation on the party screen and every player instantly sees what to swap.
 * **📋 Briefing & Mounts:** Templates carry a briefing ("TANKS → MIN T7 SIEGE HAMMER") and battle-mount slots; builds store abilities (Q1 · W4…).
 * **📥 Excel Import:** Upload your composition spreadsheet — one sheet becomes a template, each row a build (shorthand like ASAS HOOD, JUDI ARMOR, GALA, BEHE is understood).
-* **💰 Regear Payouts:** After an event, deaths are pulled from the official Albion killboard, matched to the roster by IGN and compared slot by slot with the build the player should have worn (minimum tier per role). The caller reviews warnings, approves/rejects with a fixed payout per role, and gets a copyable payout list.
+* **💰 Regear Payouts:** After an event, deaths are pulled from the official Albion killboard, matched to the roster by IGN and compared slot by slot with the build the player should have worn (minimum tier per role). The caller reviews warnings, approves/rejects with a fixed payout per role, and gets a copyable payout list. Optional limits (max regears per player, minimum IP), alliance CTAs, and finished events keep the builds they were played with. A per-player regear history shows deaths, approvals, rejections and silver across all events.
+* **📜 Activity Log:** Every caller action (moves, bench/kick, claim decisions, regear decisions) and settings change is recorded with who and when.
+* **👣 Admin Screens:** Who opened which screen and what they did (page views + every action, 30 days, no IP addresses), and a live server status page (CPU, RAM, disk, queue, database size).
 * **🔐 Discord Integration:** OAuth2 login restricted to members of your guild with a specific role (re-checked periodically).
 * **📣 Discord Bot:** Optional announcement of new parties and "ping roster" (mentions every placed player) in a channel.
 
@@ -86,6 +88,9 @@ docker compose logs -f app reverb queue
    The scan runs on the queue worker (big ZvZ = many API pages) and can be repeated; decided claims are kept.
 3. Notes from testing the official API: only 51 events per page; `events?guildId=` lists the guild's kills only, so deaths
    are read from battle events; spells are not exposed (ability picks can't be verified); bag, mount, potion and food are not checked/paid.
+4. **📨 Oyunculara bildir** DMs every player their result (approved amount, rejected deaths with the caller's reason), one message per
+   player, only new or changed decisions. Marking regears as paid sends a "paid" DM automatically. Needs `DISCORD_BOT_TOKEN`; the bot
+   must be in your server and players must allow DMs from server members — the review screen lists who couldn't be reached.
 
 ### Importing a composition spreadsheet
 
@@ -135,11 +140,27 @@ The first user to log in is a normal member — promote yourself with `php artis
 
 ## 🚢 Production notes
 
+Run the pre-flight check after every deploy; it exits with an error while something must be fixed:
+
+```bash
+php artisan app:production-check
+```
+
+It checks debug mode, dev login / dev accounts, Discord login and guild check, the queue (`retry_after` longer than a regear scan),
+HTTPS cookies, log level, config cache and recently failed jobs. What it can't check:
+
+* **Backups** — dump the database daily to another machine, e.g.
+  `docker compose exec -T db sh -c 'mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" --single-transaction "$MYSQL_DATABASE"' | gzip > backup-$(date +%F).sql.gz`,
+  and test a restore once.
+* **A queue worker is running** (Discord messages and killboard scans).
+
+Also:
+
 * `APP_ENV=production`, `APP_DEBUG=false`, `DEV_LOGIN_ENABLED=false`, `APP_DEV_SEED=false`, strong DB/Reverb secrets.
 * Run `php artisan config:cache route:cache view:cache` on deploy (all settings are read through `config()`).
 * Reverb is proxied by nginx on the same host under `/app` (see `docker/nginx.conf`), so it works behind HTTPS without extra ports.
   If the browser must connect elsewhere, set `REVERB_CLIENT_HOST/PORT/SCHEME`.
-* Keep a queue worker running (`php artisan queue:work`) for Discord messages.
+* Keep a queue worker running (`php artisan queue:work`) for Discord messages and regear scans; keep `DB_QUEUE_RETRY_AFTER` above 600.
 * Do not publish the MySQL port.
 
 ---

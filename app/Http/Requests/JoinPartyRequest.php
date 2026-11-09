@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\GameRole;
 use App\Models\LinkAttendee;
 use App\Models\SharedLink;
+use App\Services\Albion\GuildMemberDirectory;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -16,6 +17,9 @@ class JoinPartyRequest extends FormRequest
 
     /** @var Collection<string, GameRole>|null */
     private ?Collection $weapons = null;
+
+    /** In-game name with the exact spelling from the guild member list. */
+    private ?string $canonicalIgn = null;
 
     public function authorize(): bool
     {
@@ -48,6 +52,7 @@ class JoinPartyRequest extends FormRequest
             // Albion character names are 3-16 letters/digits.
             'in_game_name' => ['required', 'string', 'min:2', 'max:20', 'alpha_num:ascii'],
             'note' => ['nullable', 'string', 'max:100'],
+            'ign_confirmed' => ['nullable', 'boolean'],
             'main_role' => ['required', Rule::in($valid)],
             'second_role' => ['nullable', Rule::in($valid)],
             'third_role' => ['nullable', Rule::in($valid)],
@@ -67,6 +72,23 @@ class JoinPartyRequest extends FormRequest
     {
         return [function (Validator $validator) {
             if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $link = $this->route('link');
+            if ($link instanceof SharedLink && $link->ignTakenByOther((string) $this->input('in_game_name'), (int) $this->user()->id)) {
+                $validator->errors()->add('in_game_name', SharedLink::IGN_TAKEN_MESSAGE);
+
+                return;
+            }
+
+            $withAlliance = $link instanceof SharedLink && $link->regear_include_alliance;
+            $ign = app(GuildMemberDirectory::class)->check((string) $this->input('in_game_name'), $withAlliance);
+            if ($ign['status'] === 'ok') {
+                $this->canonicalIgn = $ign['name'];
+            } elseif ($ign['status'] === 'unknown' && ! $this->boolean('ign_confirmed')) {
+                $validator->errors()->add('in_game_name', GuildMemberDirectory::message($ign['name'], $ign['suggestion'], $withAlliance));
+
                 return;
             }
 
@@ -101,7 +123,7 @@ class JoinPartyRequest extends FormRequest
      */
     public function attendeeAttributes(): array
     {
-        $attributes = ['in_game_name' => $this->validated('in_game_name'), 'note' => $this->validated('note') ?: null];
+        $attributes = ['in_game_name' => $this->canonicalIgn ?? $this->validated('in_game_name'), 'note' => $this->validated('note') ?: null];
         $prefixes = ['main_role' => 'main', 'second_role' => 'second', 'third_role' => 'third', 'fourth_role' => 'fourth'];
 
         foreach ($prefixes as $field => $prefix) {
