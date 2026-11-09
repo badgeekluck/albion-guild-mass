@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureGuildMembership;
 use App\Http\Middleware\EnsureUserIsStaff;
+use App\Http\Middleware\LogRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             EnsureGuildMembership::class,
+            LogRequests::class,
         ]);
 
         // Guests land on the welcome page (Discord / dev login); the intended URL is kept.

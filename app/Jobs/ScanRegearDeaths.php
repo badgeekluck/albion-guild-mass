@@ -19,6 +19,9 @@ class ScanRegearDeaths implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 1;
 
+    /** The "already scanning" lock expires on its own if a worker dies mid-scan. */
+    public int $uniqueFor = 900;
+
     public function __construct(public int $linkId) {}
 
     public function uniqueId(): string
@@ -32,7 +35,12 @@ class ScanRegearDeaths implements ShouldBeUnique, ShouldQueue
 
         try {
             $result = $scanner->scan($link);
-            $status = "done: {$result['deaths']} ölüm ({$result['new']} yeni), {$result['battles']} savaş tarandı";
+            $status = "done: {$result['deaths']} ölüm ({$result['new']} yeni), {$result['battles']} savaş tarandı"
+                .($result['skipped_small'] ? ", {$result['min_battle_size']} kişiden küçük {$result['skipped_small']} savaş atlandı" : '')
+                .($result['alliance'] ? ", {$result['alliance']}" : '')
+                .", savaşta {$result['fighters']} oyuncumuz görüldü"
+                .($result['attended'] ? " ({$result['attended']} kişi katıldı işaretlendi)" : '')
+                .($result['warnings'] ? ' ⚠️ '.implode(' ', $result['warnings']) : '');
         } catch (Throwable $e) {
             report($e);
             $status = 'failed: '.mb_substr($e->getMessage(), 0, 200);
@@ -46,8 +54,10 @@ class ScanRegearDeaths implements ShouldBeUnique, ShouldQueue
     /** Download the icons of the death gear one by one, so the review page doesn't burst the render API. */
     private function warmIcons(SharedLink $link): void
     {
-        $ids = $link->regearClaims()->pluck('checks')
+        $claims = $link->regearClaims()->get(['checks', 'killer_weapon']);
+        $ids = $claims->pluck('checks')
             ->flatMap(fn ($checks) => array_column((array) $checks, 'actual'))
+            ->merge($claims->pluck('killer_weapon'))
             ->filter()->unique();
 
         foreach ($ids as $id) {

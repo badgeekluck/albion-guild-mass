@@ -9,6 +9,9 @@ class PartyTemplate extends Model
 {
     public const SLOT_TYPES = ['any', 'tank', 'dps', 'heal', 'supp', 'mount'];
 
+    /** Slots per template (5 parties). Parties can still add extra slots on top. */
+    public const MAX_SIZE = 100;
+
     protected $fillable = ['name', 'size', 'briefing', 'structure', 'created_by'];
 
     protected $casts = [

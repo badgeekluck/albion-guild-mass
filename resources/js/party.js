@@ -62,6 +62,7 @@ if (board) {
             if (!dragging) {
                 board.innerHTML = html;
                 applyFilter();
+                markPlacing();
             } else {
                 refreshPending = true;
             }
@@ -157,17 +158,27 @@ if (board) {
         if (zone && !zone.contains(event.relatedTarget)) zone.classList.remove('drag-over');
     });
 
-    board.addEventListener('drop', async (event) => {
+    board.addEventListener('drop', (event) => {
         const zone = dropZoneOf(event.target);
         if (!dragging || !zone) return;
         event.preventDefault();
         zone.classList.remove('drag-over');
+        moveTo(dragging.id, dragging.node, zone);
+    });
 
-        const { id, node } = dragging;
+    /** Moves a player to a slot (or to the waitlist when zone is the waitlist), optimistically. */
+    async function moveTo(id, node, zone) {
         const targetSlot = zone.classList.contains('party-slot') ? Number(zone.dataset.slot) : 0;
         const sourceSlot = node.closest('.party-slot');
 
-        if (sourceSlot && sourceSlot === zone) return; // dropped on itself
+        if (sourceSlot && sourceSlot === zone) {
+            dragging = null;
+            return; // dropped on itself
+        }
+        if (!sourceSlot && targetSlot === 0) {
+            dragging = null;
+            return; // already on the waitlist
+        }
 
         // Optimistic UI: move the existing DOM node, the server render replaces it right after.
         const waitlist = board.querySelector('.waitlist-area');
@@ -216,7 +227,76 @@ if (board) {
         // Success: pick up the server-assigned role / warnings. Failure: roll back.
         dragging = null;
         refreshBoard();
+    }
+
+    // ---------------------------------------------------------------- tap to place (phones, tablets, or without dragging)
+    // Tap a player, then tap a slot (or the waitlist). Tap the player again or press Esc to cancel.
+    let placing = null; // attendee id
+    const placeBar = document.createElement('div');
+    placeBar.className = 'place-bar';
+    placeBar.setAttribute('role', 'status');
+    const placeText = document.createElement('span');
+    const placeCancel = document.createElement('button');
+    placeCancel.type = 'button';
+    placeCancel.className = 'ui-btn ui-btn--sm';
+    placeCancel.textContent = 'İptal';
+    placeBar.append(placeText, placeCancel);
+    document.body.appendChild(placeBar);
+
+    const cardOf = (id) => board.querySelector(`[data-attendee-id="${CSS.escape(String(id))}"][draggable="true"]`);
+
+    function startPlacing(card) {
+        placing = card.dataset.attendeeId;
+        const name = card.dataset.name || 'Oyuncu';
+        placeText.textContent = `📍 ${name}: bir slota ya da yedek listesine dokun`;
+        markPlacing();
+    }
+
+    function stopPlacing() {
+        placing = null;
+        markPlacing();
+    }
+
+    /** (Re)applies the selection marks; also called after a live refresh replaced the board. */
+    function markPlacing() {
+        board.querySelectorAll('.is-selected').forEach((el) => el.classList.remove('is-selected'));
+        const card = placing ? cardOf(placing) : null;
+        if (placing && !card) placing = null; // the player left or can't be moved anymore
+        card?.classList.add('is-selected');
+        board.classList.toggle('is-placing', Boolean(placing));
+        placeBar.classList.toggle('show', Boolean(placing));
+    }
+
+    placeCancel.addEventListener('click', stopPlacing);
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && placing) stopPlacing();
     });
+
+    // Capture phase: while placing, a tap on a slot places the player instead of opening the build.
+    board.addEventListener('click', (event) => {
+        if (event.target.closest('button, a, form, input, select, textarea, label, details')) return;
+
+        if (placing) {
+            const selected = cardOf(placing);
+            const zone = dropZoneOf(event.target);
+            event.preventDefault();
+            event.stopPropagation();
+            if (!selected || event.target.closest('[data-attendee-id]') === selected) {
+                stopPlacing();
+                return;
+            }
+            if (!zone) return;
+            stopPlacing();
+            moveTo(selected.dataset.attendeeId, selected, zone);
+            return;
+        }
+
+        const card = event.target.closest('[data-attendee-id][draggable="true"]');
+        if (card) {
+            event.stopPropagation();
+            startPlacing(card);
+        }
+    }, true);
 
     // ---------------------------------------------------------------- modals
     function openModal(id) {

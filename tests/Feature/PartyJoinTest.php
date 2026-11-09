@@ -30,6 +30,43 @@ class PartyJoinTest extends TestCase
             ->post(route('party.join', $link), $data + ['in_game_name' => 'MyHero']);
     }
 
+    public function test_signups_and_moves_are_rate_limited(): void
+    {
+        $link = SharedLink::factory()->content()->create();
+        for ($i = 0; $i < 10; $i++) {
+            $this->actingAs($this->player)->from(route('party.show', $link))->post(route('party.leave', $link))->assertRedirect();
+        }
+        $this->actingAs($this->player)->from(route('party.show', $link))->post(route('party.leave', $link))
+            ->assertRedirect(route('party.show', $link))->assertSessionHas('error', 'Çok hızlı işlem yapıyorsun, bir dakika sonra tekrar dene.');
+
+        // Someone else isn't affected; JSON clients (drag & drop) get a 429 with a message.
+        $caller = User::factory()->creator()->create();
+        for ($i = 0; $i < 120; $i++) {
+            $this->actingAs($caller)->postJson(route('party.move', $link), ['attendee_id' => 999999, 'target_slot' => 1]);
+        }
+        $this->actingAs($caller)->postJson(route('party.move', $link), ['attendee_id' => 999999, 'target_slot' => 1])
+            ->assertStatus(429)->assertJson(['message' => 'Çok hızlı işlem yapıyorsun, birkaç saniye bekle.']);
+    }
+
+    public function test_players_are_warned_about_parties_at_the_same_time(): void
+    {
+        $at = fn (string $start, string $end) => tap(SharedLink::factory()->content()->create(['title' => "Party {$start}"]), fn (SharedLink $link) => $link
+            ->forceFill(['starts_at' => now()->addDay()->setTimeFromTimeString($start), 'ends_at' => now()->addDay()->setTimeFromTimeString($end)])->save());
+        $first = $at('20:00', '22:00');
+        $overlapping = $at('21:00', '23:00');
+        $later = $at('23:00', '23:30'); // starts when the last one ends: no overlap
+        $this->join($first, ['main_role' => 'Bow'])->assertSessionHas('success', 'Partiye katıldınız!');
+
+        $this->actingAs($this->player)->get(route('party.show', $overlapping))
+            ->assertSee('Same time as')->assertSee('Party 20:00');
+        $this->join($overlapping, ['main_role' => 'Bow'])
+            ->assertSessionHas('success', 'Partiye katıldınız! ⚠️ Aynı saatte "Party 20:00" partisine de kayıtlısın.');
+
+        $this->actingAs($this->player)->get(route('party.show', $later))->assertDontSee('Same time as');
+        $first->forceFill(['status' => SharedLink::STATUS_COMPLETED])->save();
+        $this->actingAs($this->player)->get(route('party.show', $overlapping))->assertDontSee('Party 20:00');
+    }
+
     public function test_cta_join_with_two_roles_stores_role_ids_and_broadcasts(): void
     {
         $this->mock(PartyNotifier::class)->shouldReceive('refresh')->once();

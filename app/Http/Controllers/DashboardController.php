@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePartyRequest;
 use App\Jobs\PostDiscordMessage;
+use App\Models\AuditLog;
 use App\Models\PartyTemplate;
 use App\Models\SharedLink;
 use App\Models\User;
@@ -50,9 +51,17 @@ class DashboardController extends Controller
             'title' => $data['title'],
             'type' => $data['type'],
             'template_snapshot' => $template?->structure,
+            'party_template_id' => $template?->id,
             'briefing' => $template?->briefing,
-            'expires_at' => now()->addHours((int) ($data['registration_hours'] ?? SharedLink::DEFAULT_REGISTRATION_HOURS)),
+            // With an event time, sign-ups close when the event starts; otherwise after the chosen hours.
+            'expires_at' => $startsAt && $startsAt->isFuture()
+                ? $startsAt
+                : now()->addHours((int) ($data['registration_hours'] ?? SharedLink::DEFAULT_REGISTRATION_HOURS)),
         ]);
+
+        if ($request->boolean('include_alliance')) {
+            $link->forceFill(['regear_include_alliance' => true])->save();
+        }
 
         if ($startsAt) {
             $link->forceFill([
@@ -87,9 +96,13 @@ class DashboardController extends Controller
                 'archived_by' => $request->user()->id,
             ])->save();
 
-            // Default check-in: players placed in a slot attended; staff can adjust afterwards.
+            // Default check-in: players placed in a slot attended, plus anyone the killboard saw
+            // fighting in the event (if a regear scan ran); staff can adjust afterwards.
             $link->attendees()->update(['attended' => DB::raw('CASE WHEN slot_index IS NULL THEN 0 ELSE 1 END')]);
+            $link->applyBattleAttendance();
         });
+
+        AuditLog::record('archive', 'Etkinlik bitirildi ve arşive taşındı', $link);
 
         return back()->with('success', 'Etkinlik tamamlandı ve arşive taşındı! 🏁 Katılımı parti ekranından düzenleyebilirsiniz.');
     }
@@ -99,6 +112,7 @@ class DashboardController extends Controller
         Gate::authorize('manage', $link);
 
         $link->delete();
+        AuditLog::record('delete', "Parti silindi: {$link->title}", $link);
 
         return back()->with('success', 'Link başarıyla silindi.');
     }

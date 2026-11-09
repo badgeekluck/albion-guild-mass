@@ -7,6 +7,7 @@ use App\Models\PartyTemplate;
 use App\Models\SharedLink;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
 use Tests\Concerns\CreatesGameData;
 use Tests\TestCase;
@@ -19,6 +20,36 @@ class PartyManagementTest extends TestCase
     {
         parent::setUp();
         $this->createGameRoles();
+    }
+
+    public function test_registration_closes_when_the_event_starts(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-09 12:00:00'));
+        $caller = User::factory()->creator()->create();
+
+        $this->actingAs($caller)->post(route('dashboard.create'), [
+            'title' => 'Tomorrow ZvZ', 'type' => 'cta', 'registration_hours' => 8, 'starts_at' => '2026-11-10T18:00:00.000Z',
+        ]);
+        $this->assertSame('2026-11-10 18:00', SharedLink::sole()->expires_at->utc()->format('Y-m-d H:i'));
+
+        $this->actingAs($caller)->post(route('dashboard.create'), ['title' => 'Now', 'type' => 'cta', 'registration_hours' => 4]);
+        $this->assertSame('2026-11-09 16:00', SharedLink::latest('id')->first()->expires_at->utc()->format('Y-m-d H:i'));
+    }
+
+    public function test_caller_can_extend_reopen_or_close_registration(): void
+    {
+        $link = SharedLink::factory()->create(['expires_at' => now()->addMinutes(10)]);
+
+        $this->actingAs(User::factory()->create())->post(route('party.registration', $link), ['action' => 'extend'])->assertForbidden();
+
+        $this->actingAs($link->creator)->post(route('party.registration', $link), ['action' => 'close'])->assertSessionHas('success');
+        $this->assertTrue($link->refresh()->registrationClosed());
+
+        $this->actingAs($link->creator)->post(route('party.registration', $link), ['action' => 'extend']);
+        $this->assertTrue($link->refresh()->acceptsRegistrations());
+        $this->assertEqualsWithDelta(now()->addHour()->timestamp, $link->expires_at->timestamp, 5);
+
+        $this->actingAs($link->creator)->get(route('party.board', $link))->assertSee('Extend registration +1h')->assertSee('Close registration now');
     }
 
     public function test_only_admin_or_creator_can_change_extra_slots(): void

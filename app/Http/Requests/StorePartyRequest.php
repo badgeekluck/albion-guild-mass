@@ -23,6 +23,7 @@ class StorePartyRequest extends FormRequest
             'template_id' => ['nullable', 'integer', 'exists:party_templates,id'],
             'registration_hours' => ['nullable', 'integer', Rule::in(self::REGISTRATION_HOURS)],
             'announce' => ['nullable', 'boolean'],
+            'include_alliance' => ['nullable', 'boolean'],
             // Optional event time (UTC, converted in the browser); used by regear.
             'starts_at' => ['nullable', 'date'],
             'duration_hours' => ['nullable', 'numeric', Rule::in([1, 1.5, 2, 3, 4, 6])],

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
+use App\Models\GameRole;
 use App\Models\RegearClaim;
 use App\Models\Setting;
 use App\Models\SharedLink;
@@ -37,10 +39,13 @@ class RegearSettingsController extends Controller
         return view('settings.regear', [
             'rules' => SharedLink::mergeRegearRules(SharedLink::defaultRegearRules(), (array) Setting::get('regear', [])),
             'guild' => Setting::get('albion.guild'),
+            'recentChanges' => AuditLog::with('user')->whereNull('shared_link_id')->latest('id')->limit(15)->get(),
             'envGuildId' => config('services.albion.guild_id'),
             'regions' => self::REGIONS,
             'results' => $results,
             'searchError' => $error,
+            'gankWeapons' => GameRole::whereIn('id', (array) Setting::get('regear.gank_weapons', []))->orderBy('name')->get(),
+            'weaponOptions' => GameRole::query()->weapons()->orderBy('name')->get(['id', 'name', 'unique_name']),
         ]);
     }
 
@@ -48,9 +53,28 @@ class RegearSettingsController extends Controller
     {
         abort_unless($request->user()->isAdmin(), 403, 'Regear ayarlarını sadece admin değiştirebilir.');
 
-        Setting::put('regear', self::validatedRules($request));
+        $before = Setting::get('regear');
+        Setting::put('regear', $rules = self::validatedRules($request));
+        AuditLog::record('settings.regear', 'Varsayılan regear ayarları değiştirildi', details: ['before' => $before, 'after' => $rules]);
 
         return redirect()->route('settings.regear')->with('success', 'Varsayılan regear ayarları kaydedildi.');
+    }
+
+    /** Weapons typically used by gankers: deaths to them are flagged on the regear review. */
+    public function gankWeapons(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->isAdmin(), 403, 'Regear ayarlarını sadece admin değiştirebilir.');
+
+        $data = $request->validate([
+            'gank_weapons' => ['nullable', 'array', 'max:60'],
+            'gank_weapons.*' => ['integer', Rule::exists('game_roles', 'id')->whereIn('category', GameRole::WEAPON_CATEGORIES)],
+        ]);
+
+        Setting::put('regear.gank_weapons', array_values(array_unique(array_map('intval', $data['gank_weapons'] ?? []))));
+
+        AuditLog::record('settings.gank', 'Gank silahları güncellendi ('.count((array) Setting::get('regear.gank_weapons', [])).' silah)');
+
+        return redirect()->route('settings.regear')->with('success', 'Gank silahları kaydedildi.');
     }
 
     public function selectGuild(Request $request): RedirectResponse
@@ -64,6 +88,8 @@ class RegearSettingsController extends Controller
         ]);
 
         Setting::put('albion.guild', $data);
+
+        AuditLog::record('settings.guild', "Takip edilen guild: {$data['name']} ({$data['region']})");
 
         return redirect()->route('settings.regear')->with('success', "Takip edilen guild: {$data['name']} ({$data['region']}).");
     }
@@ -81,6 +107,11 @@ class RegearSettingsController extends Controller
             'min_tier.*.*' => ['nullable', 'integer', Rule::in($tiers)],
             'payouts' => ['array'],
             'payouts.*' => ['nullable', 'string', 'max:20'],
+            'limits.max_per_player' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'limits.min_item_power' => ['nullable', 'integer', 'min:500', 'max:2500'],
+        ], [
+            'limits.max_per_player.*' => 'Oyuncu başına regear 1 ile 50 arasında olmalı (boş = sınırsız).',
+            'limits.min_item_power.*' => 'Minimum IP 500 ile 2500 arasında olmalı (boş = kontrol yok).',
         ]);
 
         $payouts = [];
@@ -94,6 +125,6 @@ class RegearSettingsController extends Controller
 
         $minTier = SharedLink::normalizeMinTier((array) $data['min_tier']);
 
-        return ['min_tier' => $minTier, 'payouts' => $payouts];
+        return ['min_tier' => $minTier, 'payouts' => $payouts, 'limits' => SharedLink::normalizeLimits((array) ($data['limits'] ?? []))];
     }
 }

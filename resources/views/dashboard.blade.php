@@ -63,7 +63,12 @@
                 <a href="{{ route('templates.index') }}" class="ui-btn">⚙️ Templates</a>
                 <a href="{{ route('builds.index') }}" class="ui-btn">🛠️ Builds</a>
                 <a href="{{ route('settings.regear') }}" class="ui-btn">💰 Regear Ayarları</a>
+                <a href="{{ route('regear.players') }}" class="ui-btn">📒 Regear geçmişi</a>
                 <a href="{{ route('attendance.index') }}" class="ui-btn">📊 Attendance</a>
+                @if(auth()->user()->isAdmin())
+                    <a href="{{ route('admin.activity') }}" class="ui-btn">👣 Aktivite</a>
+                    <a href="{{ route('admin.server') }}" class="ui-btn">🖥️ Sunucu</a>
+                @endif
                 <button type="button" class="ui-btn" onclick="document.getElementById('staffModal').style.display='block'">🛡️ Staff</button>
                 <form action="{{ route('logout') }}" method="POST">
                     @csrf
@@ -109,7 +114,7 @@
             <button type="submit" class="ui-btn ui-btn--primary ui-btn--lg">+ Create Link</button>
         </form>
         <div style="display:flex; gap: 10px; align-items:center; margin-top: 12px; font-size: 13px; color:#9ca3af; flex-wrap: wrap;">
-            <span>🕒 Etkinlik saati <span style="color:#6b7280;">(isteğe bağlı, regear için)</span></span>
+            <span>🕒 Etkinlik saati <span style="color:#6b7280;">(isteğe bağlı — girilirse kayıt etkinlik başlayınca kapanır, regear bu saati kullanır)</span></span>
             <input type="datetime-local" id="eventStartLocal" style="height: 38px; padding: 0 10px;">
             <select name="duration_hours" form="createPartyForm" style="height: 38px; padding: 0 10px;">
                 @foreach([1, 1.5, 2, 3, 4, 6] as $h)
@@ -118,6 +123,10 @@
             </select>
             <input type="hidden" name="starts_at" id="eventStartUtc" form="createPartyForm">
         </div>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:#9ca3af; cursor:pointer;"
+               title="Alliance'taki diğer guild'lerin üyeleri de isim kontrolünden geçer ve öldüklerinde regear'a düşer (sadece partiye kayıtlı olanlar).">
+            <input type="checkbox" name="include_alliance" value="1" form="createPartyForm"> 🤝 Alliance CTA <span style="color:#6b7280;">(alliance üyeleri de katılabilir)</span>
+        </label>
         @if($canAnnounce)
             <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:#9ca3af; cursor:pointer;">
                 <input type="checkbox" name="announce" value="1" form="createPartyForm" checked> 📣 Announce in Discord channel
@@ -291,6 +300,9 @@
     // The caller types local time; the server stores UTC.
     document.getElementById('eventStartLocal')?.addEventListener('change', function () {
         document.getElementById('eventStartUtc').value = this.value ? new Date(this.value).toISOString() : '';
+        // The "Open Xh" choice no longer applies: sign-ups close when the event starts.
+        const hours = document.querySelector('select[name="registration_hours"]');
+        if (hours) { hours.disabled = !!this.value; hours.title = this.value ? 'Kayıt etkinlik başlayınca kapanır' : 'How long sign-ups stay open'; }
     });
 
     document.addEventListener('click', function (event) {

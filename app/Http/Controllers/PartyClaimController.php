@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\LinkAttendee;
 use App\Models\SharedLink;
+use App\Services\Albion\GuildMemberDirectory;
 use App\Services\PartyNotifier;
 use App\Services\SlotAssigner;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -18,7 +20,7 @@ use Illuminate\Support\Facades\Gate;
  */
 class PartyClaimController extends Controller
 {
-    public function __construct(private PartyNotifier $notifier, private SlotAssigner $assigner) {}
+    public function __construct(private PartyNotifier $notifier, private SlotAssigner $assigner, private GuildMemberDirectory $members) {}
 
     public function claim(Request $request, SharedLink $link): RedirectResponse
     {
@@ -29,7 +31,20 @@ class PartyClaimController extends Controller
             'slot' => ['required', 'integer', 'min:1', 'max:'.$link->maxSlots()],
             'in_game_name' => [$mine ? 'nullable' : 'required', 'string', 'min:2', 'max:20', 'alpha_num:ascii'],
             'note' => ['nullable', 'string', 'max:100'],
+            'ign_confirmed' => ['nullable', 'boolean'],
         ], ['in_game_name.alpha_num' => 'Oyun içi isim sadece harf ve rakam içerebilir.']);
+
+        // New players: the name must match the guild member list (that's how regear finds their deaths).
+        if (! $mine) {
+            if ($link->ignTakenByOther($data['in_game_name'], $user->id)) {
+                return back()->withInput()->withErrors(['in_game_name' => SharedLink::IGN_TAKEN_MESSAGE]);
+            }
+            $ign = $this->members->check($data['in_game_name'], $link->regear_include_alliance);
+            if ($ign['status'] === 'unknown' && ! $request->boolean('ign_confirmed')) {
+                return back()->withInput()->withErrors(['in_game_name' => GuildMemberDirectory::message($ign['name'], $ign['suggestion'], $link->regear_include_alliance)]);
+            }
+            $data['in_game_name'] = $ign['name'];
+        }
 
         if (! $link->acceptsRegistrations()) {
             return back()->with('error', $link->isCompleted() ? 'Bu etkinlik tamamlandı.' : 'Bu etkinliğin kayıt süresi doldu.');
@@ -91,9 +106,9 @@ class PartyClaimController extends Controller
 
         $this->notifier->refresh($link);
 
-        return back()->with('success', $link->isContent()
+        return back()->with('success', ($link->isContent()
             ? "{$slot}. slot senin!"
-            : "{$slot}. slotu aldın — caller onaylayınca ✓ Confirmed olacak.");
+            : "{$slot}. slotu aldın — caller onaylayınca ✓ Confirmed olacak.").$link->overlapNotice($user));
     }
 
     /** Give up your slot but stay registered (waitlist). */
@@ -103,10 +118,10 @@ class PartyClaimController extends Controller
             return back()->with('error', 'Bu etkinlik tamamlandı.');
         }
 
-        $released = $link->attendees()->where('user_id', $request->user()->id)->whereNotNull('slot_index')
-            ->update(['slot_index' => null, 'assigned_role' => null, 'is_forced' => false, 'claim_status' => null]);
+        $mine = $link->attendees()->where('user_id', $request->user()->id)->whereNotNull('slot_index')->first();
+        $mine?->forceFill(['slot_index' => null, 'assigned_role' => null, 'is_forced' => false, 'claim_status' => null])->save();
 
-        if (! $released) {
+        if (! $mine) {
             return back()->with('error', 'Bir slotun yok.');
         }
 
@@ -120,6 +135,7 @@ class PartyClaimController extends Controller
         $this->authorizeDecision($link, $attendee);
 
         $attendee->forceFill(['claim_status' => LinkAttendee::CLAIM_CONFIRMED])->save();
+        AuditLog::record('confirm', $attendee->displayName().': Slot '.$attendee->slot_index.' onaylandı', $link, ['attendee_id' => $attendee->id]);
         $this->notifier->refresh($link);
 
         return back()->with('success', $attendee->displayName().' onaylandı.');
@@ -129,7 +145,7 @@ class PartyClaimController extends Controller
     {
         $this->authorizeDecision($link, $attendee);
 
-        return $this->benchAttendee($link, $attendee);
+        return $this->benchAttendee($link, $attendee, 'reject');
     }
 
     /** Caller takes a placed player (claimed or confirmed) out of their slot. Works without drag & drop (mobile). */
@@ -153,18 +169,22 @@ class PartyClaimController extends Controller
 
         $name = $attendee->displayName();
         $link->forceFill(['blocked_user_ids' => array_values(array_unique([...(array) $link->blocked_user_ids, $attendee->user_id]))])->save();
+        $slot = $attendee->slot_index;
         $attendee->delete();
+        AuditLog::record('kick', "{$name} partiden çıkarıldı".($slot ? " (Slot {$slot})" : ' (yedekteydi)'), $link, ['user_id' => $attendee->user_id]);
         $this->notifier->refresh($link);
 
         return back()->with('success', "{$name} partiden çıkarıldı.");
     }
 
-    private function benchAttendee(SharedLink $link, LinkAttendee $attendee): RedirectResponse
+    private function benchAttendee(SharedLink $link, LinkAttendee $attendee, string $action = 'bench'): RedirectResponse
     {
+        $slot = $attendee->slot_index;
         $attendee->forceFill([
             'slot_index' => null, 'assigned_role' => null, 'is_forced' => false, 'claim_status' => null,
             'claim_locked' => true, // until a caller places them again
         ])->save();
+        AuditLog::record($action, $attendee->displayName().": Slot {$slot} ".($action === 'reject' ? 'claim\'i reddedildi' : 'yedeğe alındı'), $link, ['attendee_id' => $attendee->id]);
         $this->notifier->refresh($link);
 
         return back()->with('success', $attendee->displayName().' yedeğe alındı; caller yerleştirene kadar kendi slot seçemez.');

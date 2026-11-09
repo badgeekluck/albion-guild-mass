@@ -2,6 +2,7 @@
 
 namespace App\Services\Discord;
 
+use App\Jobs\PostDiscordMessage;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
@@ -64,6 +65,37 @@ class DiscordClient
             'content' => mb_substr($content, 0, self::MESSAGE_LIMIT),
             'allowed_mentions' => ['parse' => [], 'users' => array_values(array_slice($mentionUserIds, 0, 100))],
         ])->throw();
+    }
+
+    public function directMessagesConfigured(): bool
+    {
+        return filled(config('services.discord.bot_token'));
+    }
+
+    /**
+     * DM a user (they must share a server with the bot and accept DMs from it).
+     *
+     * @throws DirectMessageRefused when Discord says the user can't receive DMs
+     */
+    public function sendDirectMessage(string $userId, string $content): void
+    {
+        $channel = $this->request()->post('/users/@me/channels', ['recipient_id' => $userId]);
+        if ($channel->clientError()) {
+            throw new DirectMessageRefused("Discord DM kanalı açılamadı (HTTP {$channel->status()}).");
+        }
+        $channel->throw();
+
+        foreach (PostDiscordMessage::chunk($content) as $chunk) {
+            $response = $this->request()->post('/channels/'.$channel->json('id').'/messages', [
+                'content' => $chunk,
+                'allowed_mentions' => ['parse' => []],
+            ]);
+            // 50007: "Cannot send messages to this user" (DMs closed / no shared server).
+            if ($response->status() === 403 || $response->json('code') === 50007) {
+                throw new DirectMessageRefused('Oyuncu DM kabul etmiyor.');
+            }
+            $response->throw();
+        }
     }
 
     private function request(): PendingRequest

@@ -56,6 +56,47 @@ class LinkAttendee extends Model
         'fourth_role_id' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        static::created(function (LinkAttendee $attendee) {
+            if ($attendee->slot_index) {
+                $attendee->openSlotHistory();
+            }
+        });
+
+        static::updated(function (LinkAttendee $attendee) {
+            if ($attendee->wasChanged('slot_index')) {
+                $attendee->closeSlotHistory();
+                if ($attendee->slot_index) {
+                    $attendee->openSlotHistory();
+                }
+            } elseif ($attendee->wasChanged(['claim_status', 'in_game_name']) && $attendee->slot_index) {
+                SlotHistory::where('link_attendee_id', $attendee->id)->whereNull('ended_at')
+                    ->update(['claim_status' => $attendee->claim_status, 'in_game_name' => $attendee->in_game_name]);
+            }
+        });
+
+        static::deleting(fn (LinkAttendee $attendee) => $attendee->closeSlotHistory());
+    }
+
+    private function openSlotHistory(): void
+    {
+        SlotHistory::create([
+            'shared_link_id' => $this->shared_link_id,
+            'link_attendee_id' => $this->id,
+            'user_id' => $this->user_id,
+            'in_game_name' => $this->in_game_name,
+            'slot_index' => $this->slot_index,
+            'claim_status' => $this->claim_status,
+            'started_at' => now(),
+        ]);
+    }
+
+    private function closeSlotHistory(): void
+    {
+        SlotHistory::where('link_attendee_id', $this->id)->whereNull('ended_at')->update(['ended_at' => now()]);
+    }
+
     public function link(): BelongsTo
     {
         return $this->belongsTo(SharedLink::class, 'shared_link_id');

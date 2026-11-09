@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateTemplateRequest;
+use App\Models\AuditLog;
 use App\Models\PartyTemplate;
 use App\Models\SavedBuild;
+use App\Models\SharedLink;
+use App\Services\PartyNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -22,7 +25,7 @@ class TemplateController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'size' => ['required', 'integer', 'min:1', 'max:100'],
+            'size' => ['required', 'integer', 'min:1', 'max:'.PartyTemplate::MAX_SIZE],
         ]);
 
         $template = PartyTemplate::create([
@@ -57,18 +60,40 @@ class TemplateController extends Controller
 
     public function update(UpdateTemplateRequest $request, PartyTemplate $template): RedirectResponse
     {
+        $oldSize = $template->size;
         $template->update([
             'name' => $request->validated('name'),
             'briefing' => $request->validated('briefing'),
+            'size' => $request->size($template),
             'structure' => $request->structure($template),
         ]);
 
-        return redirect()->route('templates.index')->with('success', 'Template başarıyla güncellendi!');
+        // Open parties made from this template that haven't started yet get the new version.
+        $synced = SharedLink::where('party_template_id', $template->id)->get()->filter->followsTemplateEdits();
+        $benched = $synced->sum(function (SharedLink $link) use ($template) {
+            $moved = $link->applyTemplate($template);
+            AuditLog::record('template.apply', "Template değişikliği uygulandı: {$template->name}".($moved ? " ({$moved} oyuncu yedeğe düştü)" : ''), $link);
+            app(PartyNotifier::class)->refresh($link);
+
+            return $moved;
+        });
+        $syncNote = $synced->isEmpty() ? '' : ' '.$synced->count().' açık partiye de uygulandı'.($benched ? " ({$benched} oyuncu kaldırılan slotlardan yedeğe düştü)" : '').'.';
+
+        AuditLog::record('template.update', "Template güncellendi: {$template->name}".($template->size !== $oldSize ? " ({$oldSize} → {$template->size} slot)" : ''),
+            details: ['template_id' => $template->id]);
+
+        if ($template->size !== $oldSize) {
+            return redirect()->route('templates.edit', $template)
+                ->with('success', "Template {$oldSize} → {$template->size} slot oldu.".$syncNote);
+        }
+
+        return redirect()->route('templates.index')->with('success', 'Template başarıyla güncellendi!'.$syncNote);
     }
 
     public function destroy(PartyTemplate $template): RedirectResponse
     {
         $template->delete();
+        AuditLog::record('template.delete', "Template silindi: {$template->name}", details: ['template_id' => $template->id]);
 
         return back()->with('success', 'Template silindi.');
     }

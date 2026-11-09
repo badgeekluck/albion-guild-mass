@@ -6,6 +6,7 @@ use App\Enums\Situation;
 use App\Http\Requests\JoinPartyRequest;
 use App\Http\Requests\MovePartyMemberRequest;
 use App\Jobs\PostDiscordMessage;
+use App\Models\AuditLog;
 use App\Models\GameRole;
 use App\Models\LinkAttendee;
 use App\Models\PartyTemplate;
@@ -73,7 +74,7 @@ class PartyController extends Controller
 
         $this->notifier->refresh($link);
 
-        return back()->with('success', 'Partiye katıldınız!');
+        return back()->with('success', 'Partiye katıldınız!'.$link->overlapNotice($request->user()));
     }
 
     public function leave(Request $request, SharedLink $link): RedirectResponse
@@ -82,7 +83,7 @@ class PartyController extends Controller
             return back()->with('error', 'Bu etkinlik tamamlandı (Arşivlendi). Değişiklik yapılamaz.');
         }
 
-        $deleted = $link->attendees()->where('user_id', $request->user()->id)->delete();
+        $deleted = $link->attendees()->where('user_id', $request->user()->id)->first()?->delete();
 
         if (! $deleted) {
             return back()->with('error', 'Zaten partide değilsiniz.');
@@ -132,6 +133,8 @@ class PartyController extends Controller
                     }
                 }
 
+                $fromSlot = $attendee->slot_index;
+
                 // A caller dropping onto an occupied slot sends that player back to the waitlist.
                 $occupant?->forceFill(['slot_index' => null, 'assigned_role' => null, 'is_forced' => false, 'claim_status' => null])->save();
 
@@ -142,6 +145,11 @@ class PartyController extends Controller
                     $placement['claim_locked'] = $targetSlot === 0 && $attendee->user_id !== $user->id;
                 }
                 $attendee->forceFill($placement)->save();
+
+                $where = fn (?int $slot) => $slot ? "Slot {$slot}" : 'yedek';
+                AuditLog::record('move', $attendee->displayName().': '.$where($fromSlot).' → '.$where($targetSlot ?: null)
+                    .($occupant ? " ({$occupant->displayName()} yedeğe düştü)" : ''), $locked,
+                    ['attendee_id' => $attendee->id, 'from' => $fromSlot, 'to' => $targetSlot ?: null, 'displaced_id' => $occupant?->id]);
 
                 return [200, null];
             });
@@ -185,11 +193,15 @@ class PartyController extends Controller
                 $wanted = $locked->extra_slots - $amount;
                 $locked->extra_slots = max(0, $wanted);
             }
+            $before = $locked->getOriginal('extra_slots');
             $locked->save();
+            if ($locked->extra_slots !== $before) {
+                AuditLog::record('slots', 'Extra slot: '.$before.' → '.$locked->extra_slots.' (toplam '.$locked->maxSlots().')', $locked);
+            }
 
             // Players sitting in a slot that no longer exists go back to the waitlist.
-            $locked->attendees()->where('slot_index', '>', $locked->maxSlots())
-                ->update(['slot_index' => null, 'assigned_role' => null, 'is_forced' => false, 'claim_status' => null]);
+            $locked->attendees()->where('slot_index', '>', $locked->maxSlots())->get()
+                ->each(fn (LinkAttendee $a) => $a->forceFill(['slot_index' => null, 'assigned_role' => null, 'is_forced' => false, 'claim_status' => null])->save());
 
             return $data['action'] === 'add' && $wanted > $locked->extra_slots;
         });
@@ -221,8 +233,32 @@ class PartyController extends Controller
         $this->notifier->refresh($link);
 
         $label = Situation::tryFrom((string) $situation);
+        AuditLog::record('situation', 'Durum: '.($label?->label() ?? 'Normal'), $link);
 
         return back()->with('success', $label ? "Durum: {$label->label()} — swap'lar herkese gösteriliyor." : 'Normal kuruluma dönüldü.');
+    }
+
+    /** Caller extends (or reopens) sign-ups by an hour, or closes them now. */
+    public function registration(Request $request, SharedLink $link): RedirectResponse
+    {
+        Gate::authorize('manage', $link);
+        abort_unless($link->acceptsChanges(), 403, 'Bu etkinlik tamamlandı.');
+
+        $action = $request->validate(['action' => ['required', Rule::in(['extend', 'close'])]])['action'];
+
+        if ($action === 'close') {
+            $link->forceFill(['expires_at' => now()])->save();
+            $message = 'Kayıtlar kapatıldı.';
+        } else {
+            $base = $link->registrationClosed() ? now() : $link->expires_at;
+            $link->forceFill(['expires_at' => $base->copy()->addHour()])->save();
+            $message = 'Kayıt süresi uzatıldı: '.$link->expires_at->locale('tr')->diffForHumans().' kapanacak.';
+        }
+
+        AuditLog::record('registration', $message, $link);
+        $this->notifier->refresh($link);
+
+        return back()->with('success', $message);
     }
 
     /** Mentions every placed player in the configured Discord channel. */
@@ -252,7 +288,38 @@ class PartyController extends Controller
             PostDiscordMessage::dispatch($channel, $chunk, $m[1]);
         }
 
+        AuditLog::record('ping', 'Kadro Discord\'da pinglendi ('.$placed->count().' oyuncu).', $link);
+
         return back()->with('success', 'Kadro Discord kanalında pinglendi.');
+    }
+
+    /** Activity log of the party: who moved, benched, kicked, confirmed, decided regears... */
+    public function activity(SharedLink $link): View
+    {
+        Gate::authorize('manage', $link);
+
+        return view('party.activity', [
+            'link' => $link,
+            'entries' => AuditLog::with('user')->where('shared_link_id', $link->id)->latest('id')->paginate(100),
+        ]);
+    }
+
+    /** Re-applies a template (its current version) to this party, e.g. after editing the template. */
+    public function applyTemplate(Request $request, SharedLink $link): RedirectResponse
+    {
+        Gate::authorize('manage', $link);
+        if (! $link->acceptsChanges()) {
+            return back()->with('error', 'Bu etkinlik tamamlandı. Değişiklik yapılamaz.');
+        }
+
+        $template = PartyTemplate::findOrFail($request->validate(['template_id' => ['required', 'integer', 'exists:party_templates,id']])['template_id']);
+        $benched = $link->applyTemplate($template);
+
+        AuditLog::record('template.apply', "Template uygulandı: {$template->name}".($benched ? " ({$benched} oyuncu yedeğe düştü)" : ''), $link);
+        $this->notifier->refresh($link);
+
+        return back()->with('success', "\"{$template->name}\" uygulandı: {$template->size} slot, güncel buildler ve briefing."
+            .($benched ? " Kaldırılan slotlardaki {$benched} oyuncu yedeğe düştü." : ''));
     }
 
     /** Turns the current roster into a reusable template. */
@@ -302,6 +369,7 @@ class PartyController extends Controller
         }
 
         $attendee->forceFill(['attended' => ! $attendee->attended])->save();
+        AuditLog::record('attendance', $attendee->displayName().': '.($attendee->attended ? 'katıldı' : 'katılmadı').' olarak işaretlendi', $link);
 
         return back()->with('success', $attendee->displayName().' katılımı güncellendi.');
     }
